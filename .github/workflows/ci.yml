@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  packages: read # pull the db image from GHCR
 
 jobs:
   check:
@@ -14,7 +15,13 @@ jobs:
     timeout-minutes: 10
     services:
       db:
-        image: pgvector/pgvector:0.8.7-pg17-bookworm
+        # Copy of pgvector/pgvector:0.8.7-pg17-bookworm (same digest), pulled from
+        # GHCR because Docker Hub rate-limits and times out on shared runners.
+        # Refresh with: docker buildx imagetools create --tag <this> <docker hub ref>
+        image: ghcr.io/charles-goodsir/pgvector:0.8.7-pg17-bookworm@sha256:ac08538c6f8b9904c33c8224c5e5706dbe760aca29db1d096972b4052c22a75d
+        credentials:
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
         env:
           POSTGRES_USER: ci
           POSTGRES_PASSWORD: ci
