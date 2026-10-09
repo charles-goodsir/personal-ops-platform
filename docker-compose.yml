@@ -44,6 +44,9 @@ services:
       MCP_HTTP_PORT: 3000
       MCP_ALLOWED_HOSTS: ${MCP_ALLOWED_HOSTS:-localhost,127.0.0.1}
       MCP_AUTH_TOKENS: ${MCP_AUTH_TOKENS:?set in .env}
+      # search_notes embeds the query with the same model as the notes.
+      OLLAMA_URL: http://ollama:11434
+      EMBED_MODEL: ${EMBED_MODEL:-nomic-embed-text}
     # Host address to publish on: 127.0.0.1 locally, the LAN IP on the mini PC.
     ports:
       - "${MCP_PUBLISH_ADDR:-127.0.0.1}:${MCP_HTTP_PORT:-3000}:3000"
@@ -52,6 +55,8 @@ services:
     cap_drop: [ALL]
     depends_on:
       migrate:
+        condition: service_completed_successfully
+      ollama-pull:
         condition: service_completed_successfully
 
   # Indexes the notes folder: full scan at startup, then watches for changes.

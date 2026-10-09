@@ -1,21 +1,14 @@
-import {
-  mkdir,
-  mkdtemp,
-  readdir,
-  readFile,
-  rm,
-  writeFile,
-} from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createDb, createLogger, type Db } from "@ops/core";
+import { createLogger, type Db } from "@ops/core";
 import { afterAll, beforeAll, beforeEach, expect, test, vi } from "vitest";
 import type { Embedder } from "./embed.js";
 import { createIngester, listFiles } from "./ingest.js";
+import { createTestDb } from "./test-db.js";
 
-// Integration test against a throwaway schema, so scans can't touch real notes.
 const url = process.env.DATABASE_URL;
-const schema = `kb_test_${process.pid}`;
+let testDb: Awaited<ReturnType<typeof createTestDb>>;
 let db: Db | undefined;
 const getDb = () => {
   if (!db) throw new Error("no database");
@@ -23,24 +16,11 @@ const getDb = () => {
 };
 let dir: string;
 
-const migrationsDir = new URL("../../core/migrations/", import.meta.url);
-
 beforeAll(async () => {
-  if (!url) return;
-  const scoped = new URL(url);
-  scoped.searchParams.set("options", `-c search_path=${schema},public`);
-  db = createDb({ DATABASE_URL: scoped.href });
-  await db.query(`CREATE SCHEMA ${schema}`);
-  for (const file of (await readdir(migrationsDir)).sort()) {
-    const sql = await readFile(new URL(file, migrationsDir), "utf8");
-    await db.query(sql.split("-- Down Migration")[0] ?? "");
-  }
+  testDb = await createTestDb("ingest");
+  db = testDb?.db;
 });
-
-afterAll(async () => {
-  await db?.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);
-  await db?.end();
-});
+afterAll(() => testDb?.drop());
 
 beforeEach(async () => {
   dir = await mkdtemp(join(tmpdir(), "notes-"));

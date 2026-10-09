@@ -12,6 +12,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.32.1",
     "@ops/core": "workspace:*",
+    "@ops/knowledge-base": "workspace:*",
     "express": "^5.2.1",
     "pino": "10.4.0",
     "zod": "4.6.5"

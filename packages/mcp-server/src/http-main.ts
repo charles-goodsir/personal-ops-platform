@@ -1,12 +1,18 @@
 import { createDb, createLogger, loadConfig } from "@ops/core";
+import { createEmbedder, createNotesApi } from "@ops/knowledge-base";
 import { createHttpApp, loadHttpConfig } from "./http.js";
 
 const config = loadConfig();
 const http = loadHttpConfig();
 const logger = createLogger(config);
 const db = createDb(config);
+const notes = createNotesApi({
+  db,
+  embed: createEmbedder({ url: config.OLLAMA_URL, model: config.EMBED_MODEL }),
+  model: config.EMBED_MODEL,
+});
 
-const server = createHttpApp({ db, logger }, http).listen(
+const server = createHttpApp({ db, logger, notes }, http).listen(
   http.MCP_HTTP_PORT,
   http.MCP_HTTP_HOST,
   () => {
