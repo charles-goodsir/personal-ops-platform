@@ -17,5 +17,42 @@ services:
       timeout: 3s
       retries: 10
 
+  migrate:
+    image: personal-ops:local # built by mcp-server
+    pull_policy: never
+    command:
+      [
+        "packages/core/node_modules/.bin/node-pg-migrate",
+        "--migrations-dir",
+        "packages/core/migrations",
+        "up",
+      ]
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  mcp-server:
+    image: personal-ops:local
+    build: .
+    restart: unless-stopped
+    environment:
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      MCP_HTTP_HOST: 0.0.0.0
+      MCP_HTTP_PORT: 3000
+      MCP_ALLOWED_HOSTS: ${MCP_ALLOWED_HOSTS:-localhost,127.0.0.1}
+      MCP_AUTH_TOKENS: ${MCP_AUTH_TOKENS:?set in .env}
+    # Host address to publish on: 127.0.0.1 locally, the LAN IP on the mini PC.
+    ports:
+      - "${MCP_PUBLISH_ADDR:-127.0.0.1}:${MCP_HTTP_PORT:-3000}:3000"
+    read_only: true
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
 volumes:
   pgdata:
