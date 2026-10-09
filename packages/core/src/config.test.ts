@@ -9,6 +9,7 @@ test("applies defaults", () => {
   expect(config.LOG_LEVEL).toBe("info");
   expect(config.OLLAMA_URL).toBe("http://localhost:11434");
   expect(config.EMBED_MODEL).toBe("nomic-embed-text");
+  expect(config.NOTES_DIR).toBe("./notes");
 });
 
 test("rejects missing DATABASE_URL", () => {

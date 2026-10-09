@@ -22,6 +22,7 @@ WORKDIR /app
 COPY --from=prod-deps /app ./
 COPY --from=build /app/packages/core/dist packages/core/dist
 COPY --from=build /app/packages/mcp-server/dist packages/mcp-server/dist
+COPY --from=build /app/packages/knowledge-base/dist packages/knowledge-base/dist
 COPY packages/core/migrations packages/core/migrations
 USER node
 CMD ["node", "packages/mcp-server/dist/http-main.js"]
