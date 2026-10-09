@@ -15,10 +15,10 @@
     "migrate": "node-pg-migrate --migrations-dir migrations --envPath ../../.env"
   },
   "devDependencies": {
-    "@types/pg": "8.23.1",
-    "node-pg-migrate": "9.0.0"
+    "@types/pg": "8.23.1"
   },
   "dependencies": {
+    "node-pg-migrate": "9.0.0",
     "pg": "8.23.1",
     "pino": "10.4.0",
     "zod": "4.6.5"
