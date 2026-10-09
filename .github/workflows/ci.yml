@@ -15,6 +15,11 @@ jobs:
     services:
       db:
         image: pgvector/pgvector:0.8.7-pg17-bookworm
+        # Anonymous Docker Hub pulls from shared runner IPs hit the rate limit.
+        # Read-only Docker Hub access token, stored as repo secrets.
+        credentials:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
         env:
           POSTGRES_USER: ci
           POSTGRES_PASSWORD: ci
