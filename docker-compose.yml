@@ -54,6 +54,30 @@ services:
       migrate:
         condition: service_completed_successfully
 
+  # Indexes the notes folder: full scan at startup, then watches for changes.
+  knowledge-base:
+    image: personal-ops:local
+    pull_policy: never
+    command: ["node", "packages/knowledge-base/dist/watch-main.js"]
+    restart: unless-stopped
+    environment:
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      OLLAMA_URL: http://ollama:11434
+      EMBED_MODEL: ${EMBED_MODEL:-nomic-embed-text}
+      NOTES_DIR: /notes
+    volumes:
+      # Host folder from NOTES_DIR in .env. Read-only: indexing never edits notes.
+      - ${NOTES_DIR:-./notes}:/notes:ro
+    read_only: true
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      ollama-pull:
+        condition: service_completed_successfully
+
   # Embeddings model server. No published port: only reachable from other
   # services on the compose network, so notes never leave the box.
   ollama:

@@ -5,3 +5,5 @@
 .env.*
 .git
 backups
+# Personal notes for the knowledge base. Never committed or baked into images.
+notes/
