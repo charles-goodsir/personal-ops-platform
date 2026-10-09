@@ -1,0 +1,16 @@
+{
+  "name": "@ops/mcp-server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "start:stdio": "node dist/stdio.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.1",
+    "@ops/core": "workspace:*",
+    "pino": "10.4.0"
+  }
+}
