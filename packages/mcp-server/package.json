@@ -6,11 +6,17 @@
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "start:stdio": "node dist/stdio.js"
+    "start:stdio": "node dist/stdio.js",
+    "start:http": "node dist/http-main.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.32.1",
     "@ops/core": "workspace:*",
-    "pino": "10.4.0"
+    "express": "^5.2.1",
+    "pino": "10.4.0",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6"
   }
 }
