@@ -12,7 +12,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "pnpm -r typecheck",
-    "test": "vitest run"
+    "test": "vitest run",
+    "migrate": "pnpm --filter @ops/core migrate"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

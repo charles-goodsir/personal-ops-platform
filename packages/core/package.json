@@ -6,6 +6,11 @@
   "exports": "./dist/index.js",
   "scripts": {
     "build": "tsc",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "migrate": "node-pg-migrate --migrations-dir migrations --envPath ../../.env"
+  },
+  "devDependencies": {
+    "node-pg-migrate": "9.0.0",
+    "pg": "8.23.1"
   }
 }
