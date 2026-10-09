@@ -5,6 +5,7 @@ RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/core/package.json packages/core/
 COPY packages/mcp-server/package.json packages/mcp-server/
+COPY packages/knowledge-base/package.json packages/knowledge-base/
 
 FROM base AS build
 RUN pnpm install --frozen-lockfile --ignore-scripts
