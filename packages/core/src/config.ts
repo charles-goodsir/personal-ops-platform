@@ -10,6 +10,7 @@ const schema = z.object({
   DATABASE_URL: z.url({ protocol: /^postgres(ql)?$/ }),
   OLLAMA_URL: z.url({ protocol: /^https?$/ }).default("http://localhost:11434"),
   EMBED_MODEL: z.string().min(1).default("nomic-embed-text"),
+  NOTES_DIR: z.string().min(1).default("./notes"),
 });
 
 export type Config = z.infer<typeof schema>;
