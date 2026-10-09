@@ -14,6 +14,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@ops/core": "workspace:*",
     "zod": "4.6.5"
   }
 }
