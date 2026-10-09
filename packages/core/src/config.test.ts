@@ -7,6 +7,8 @@ test("applies defaults", () => {
   const config = loadConfig(valid);
   expect(config.NODE_ENV).toBe("development");
   expect(config.LOG_LEVEL).toBe("info");
+  expect(config.OLLAMA_URL).toBe("http://localhost:11434");
+  expect(config.EMBED_MODEL).toBe("nomic-embed-text");
 });
 
 test("rejects missing DATABASE_URL", () => {

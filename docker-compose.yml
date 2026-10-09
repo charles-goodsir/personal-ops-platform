@@ -54,5 +54,34 @@ services:
       migrate:
         condition: service_completed_successfully
 
+  # Embeddings model server. No published port: only reachable from other
+  # services on the compose network, so notes never leave the box.
+  ollama:
+    image: ollama/ollama:0.34.4@sha256:8262851b2846b87c649eddf3e76beb270c52f4d1bc94559f47efde16b0841551
+    restart: unless-stopped
+    volumes:
+      - ollama:/root/.ollama
+    mem_limit: 2g
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # One-shot: downloads the model into the ollama volume. A no-op once it is there.
+  ollama-pull:
+    image: ollama/ollama:0.34.4@sha256:8262851b2846b87c649eddf3e76beb270c52f4d1bc94559f47efde16b0841551
+    command: ["pull", "${EMBED_MODEL:-nomic-embed-text}"]
+    environment:
+      OLLAMA_HOST: ollama:11434
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    depends_on:
+      ollama:
+        condition: service_healthy
+
 volumes:
   pgdata:
+  ollama:
