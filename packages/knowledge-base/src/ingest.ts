@@ -3,6 +3,7 @@ import { readdir, readFile, stat } from "node:fs/promises";
 import { extname, join, relative, sep } from "node:path";
 import type { Db, Logger } from "@ops/core";
 import type { Embedder } from "./embed.js";
+import { CHUNKER_VERSION } from "./chunk.js";
 import { parseNote, SUPPORTED } from "./extract.js";
 
 export type IngestResult = "added" | "updated" | "unchanged" | "skipped";
@@ -23,7 +24,11 @@ export function createIngester(deps: {
   async function ingestFile(path: string): Promise<IngestResult> {
     const full = join(notesDir, path);
     const [data, info] = await Promise.all([readFile(full), stat(full)]);
-    const hash = createHash("sha256").update(data).digest("hex");
+    // The chunker version is part of the hash, so a chunking change re-indexes.
+    const hash = createHash("sha256")
+      .update(`chunker:${CHUNKER_VERSION}\n`)
+      .update(data)
+      .digest("hex");
 
     // Unchanged content, embedded by the current model: nothing to do.
     const { rowCount } = await db.query(

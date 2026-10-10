@@ -42,10 +42,37 @@ test("packs paragraphs up to the limit, then starts a new chunk", () => {
   ]);
 });
 
-test("splits a paragraph longer than the limit", () => {
+test("cuts an unbroken run mid-word only as a last resort", () => {
   expect(chunkText("x".repeat(25), 10).map((c) => c.content.length)).toEqual([
     10, 10, 5,
   ]);
+});
+
+test("splits an oversized paragraph at line breaks first", () => {
+  const list = "- first item here\n- second item\n- third one";
+  expect(chunkText(list, 35).map((c) => c.content)).toEqual([
+    "- first item here\n- second item",
+    "- third one",
+  ]);
+});
+
+test("then at sentence ends, keeping the full stop", () => {
+  const text = "One short sentence. Another short one. A third.";
+  expect(chunkText(text, 25).map((c) => c.content)).toEqual([
+    "One short sentence.",
+    "Another short one.",
+    "A third.",
+  ]);
+});
+
+test("then between words, never cutting one in half", () => {
+  const text = "alpha beta gamma delta epsilon zeta eta theta";
+  const pieces = chunkText(text, 12).map((c) => c.content);
+  expect(pieces.join(" ")).toBe(text);
+  for (const p of pieces) {
+    expect(p.length).toBeLessThanOrEqual(12);
+    expect(p).not.toMatch(/^\s|\s$/);
+  }
 });
 
 test("no chunk is longer than the limit", () => {
