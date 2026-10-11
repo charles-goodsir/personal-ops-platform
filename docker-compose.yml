@@ -96,6 +96,7 @@ services:
       # Optional: without a key, transactions sync but only my rules categorise them.
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       CLAUDE_BULK_MODEL: ${CLAUDE_BULK_MODEL:-claude-haiku-5-5}
+      FINANCE_HISTORY_START: ${FINANCE_HISTORY_START:-2026-01-01}
     read_only: true
     security_opt: ["no-new-privileges:true"]
     cap_drop: [ALL]

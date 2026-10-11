@@ -9,6 +9,12 @@ const schema = z.object({
     .union([z.string().startsWith("sk-ant-"), z.literal("")])
     .optional(),
   CLAUDE_BULK_MODEL: z.string().min(1).default("claude-haiku-5-5"),
+  // Earliest transaction date to fetch and keep. Akahu stamps a transaction
+  // at 23:59 NZ time on its date, so a plain date splits days correctly.
+  FINANCE_HISTORY_START: z.iso
+    .date()
+    .default("2026-01-01")
+    .transform((d) => new Date(d)),
 });
 
 export type FinanceConfig = z.infer<typeof schema>;
