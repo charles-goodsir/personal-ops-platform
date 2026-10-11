@@ -1,6 +1,7 @@
 import { pino } from "pino";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createDb, createLogger, loadConfig } from "@ops/core";
+import { createRulesApi } from "@ops/finance";
 import { createEmbedder, createNotesApi } from "@ops/knowledge-base";
 import { createServer } from "./server.js";
 
@@ -14,7 +15,9 @@ const notes = createNotesApi({
   model: config.EMBED_MODEL,
 });
 
-await createServer({ db, logger, notes }).connect(new StdioServerTransport());
+await createServer({ db, logger, notes, rules: createRulesApi(db) }).connect(
+  new StdioServerTransport(),
+);
 logger.info("mcp-server listening on stdio");
 
 const shutdown = async () => {

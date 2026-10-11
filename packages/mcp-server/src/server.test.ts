@@ -1,6 +1,7 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { createLogger, type Db } from "@ops/core";
+import type { RulesApi } from "@ops/finance";
 import type { NotesApi } from "@ops/knowledge-base";
 import { expect, test, vi } from "vitest";
 import { createServer, MAX_NOTE_CHARS } from "./server.js";
@@ -49,9 +50,37 @@ const fakeNotes = {
   ]),
 } satisfies NotesApi;
 
+const fakeRules = {
+  addRule: vi.fn(async (pattern: string, category: string) => ({
+    pattern: pattern.trim().toLowerCase(),
+    category,
+    replaced: pattern === "countdown" ? "Eating out" : null,
+    matches: 6,
+    changed: 6,
+  })),
+  listRules: vi.fn(async () => [
+    {
+      pattern: "southern cross pet",
+      category: "Insurance",
+      matches: 6,
+      createdAt: when,
+    },
+  ]),
+  removeRule: vi.fn(async (pattern: string) =>
+    pattern === "gone"
+      ? { pattern, removed: false, uncategorised: 0 }
+      : { pattern, removed: true, uncategorised: 6, recategorised: 0 },
+  ),
+} as unknown as RulesApi;
+
 async function connect(db: Pick<Db, "query">, notes: NotesApi = fakeNotes) {
   const logger = createLogger({ LOG_LEVEL: "fatal" });
-  const server = createServer({ db: db as Db, logger, notes });
+  const server = createServer({
+    db: db as Db,
+    logger,
+    notes,
+    rules: fakeRules,
+  });
   const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
   await server.connect(serverSide);
   const client = new Client({ name: "test", version: "0" });
@@ -68,7 +97,7 @@ const brokenDb = {
   },
 } as unknown as Db;
 
-test("lists every tool, all read-only", async () => {
+test("lists every tool, and only the rule edits can change data", async () => {
   const client = await connect(healthyDb);
   const { tools } = await client.listTools();
   expect(tools.map((t) => t.name)).toEqual([
@@ -76,8 +105,73 @@ test("lists every tool, all read-only", async () => {
     "search_notes",
     "get_note",
     "list_recent_notes",
+    "add_category_rule",
+    "list_category_rules",
+    "remove_category_rule",
   ]);
-  expect(tools.every((t) => t.annotations?.readOnlyHint)).toBe(true);
+  const writers = tools
+    .filter((t) => !t.annotations?.readOnlyHint)
+    .map((t) => t.name);
+  expect(writers).toEqual(["add_category_rule", "remove_category_rule"]);
+  const remove = tools.find((t) => t.name === "remove_category_rule");
+  expect(remove?.annotations?.destructiveHint).toBe(true);
+});
+
+test("add_category_rule saves and reports what changed", async () => {
+  const client = await connect(healthyDb);
+  const result = await client.callTool({
+    name: "add_category_rule",
+    arguments: { pattern: "Southern Cross Pet", category: "Insurance" },
+  });
+  expect(fakeRules.addRule).toHaveBeenLastCalledWith(
+    "Southern Cross Pet",
+    "Insurance",
+  );
+  expect(textOf(result)).toBe(
+    'Rule saved: "southern cross pet" -> Insurance. Matches 6 transactions; 6 changed category.',
+  );
+});
+
+test("add_category_rule refuses a category outside the list", async () => {
+  const client = await connect(healthyDb);
+  vi.mocked(fakeRules.addRule).mockClear();
+  const result = await client.callTool({
+    name: "add_category_rule",
+    arguments: { pattern: "pet", category: "Bribes" },
+  });
+  expect(result.isError).toBe(true);
+  expect(fakeRules.addRule).not.toHaveBeenCalled();
+});
+
+test("the category list reaches the client as a real enum", async () => {
+  const client = await connect(healthyDb);
+  const { tools } = await client.listTools();
+  const schema = tools.find((t) => t.name === "add_category_rule")
+    ?.inputSchema as unknown as {
+    properties: { category: { enum?: string[] } };
+  };
+  expect(schema.properties.category.enum).toContain("Insurance");
+});
+
+test("list and remove rules", async () => {
+  const client = await connect(healthyDb);
+  expect(
+    textOf(
+      await client.callTool({ name: "list_category_rules", arguments: {} }),
+    ),
+  ).toBe('"southern cross pet" -> Insurance (6 matches)');
+  const removed = await client.callTool({
+    name: "remove_category_rule",
+    arguments: { pattern: "southern cross pet" },
+  });
+  expect(textOf(removed)).toBe(
+    'Rule "southern cross pet" removed. 6 transactions are uncategorised until the next sync.',
+  );
+  const missing = await client.callTool({
+    name: "remove_category_rule",
+    arguments: { pattern: "gone" },
+  });
+  expect(missing.isError).toBe(true);
 });
 
 const textOf = (result: Awaited<ReturnType<Client["callTool"]>>) =>

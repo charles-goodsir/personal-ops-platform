@@ -13,3 +13,4 @@ export {
   maskDigits,
   type Classifier,
 } from "./categorise.js";
+export { createRulesApi, type Rule, type RulesApi } from "./rules.js";
