@@ -1,11 +1,10 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createLogger, type Db } from "@ops/core";
+import { createLogger, createTestDb, type Db } from "@ops/core";
 import { afterAll, beforeAll, beforeEach, expect, test, vi } from "vitest";
 import type { Embedder } from "./embed.js";
 import { createIngester, listFiles } from "./ingest.js";
-import { createTestDb } from "./test-db.js";
 
 const url = process.env.DATABASE_URL;
 let testDb: Awaited<ReturnType<typeof createTestDb>>;

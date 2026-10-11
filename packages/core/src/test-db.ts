@@ -1,5 +1,5 @@
 import { readdir, readFile } from "node:fs/promises";
-import { createDb, type Db } from "@ops/core";
+import { createDb, type Db } from "./db.js";
 
 // Integration tests run in a throwaway schema built from the real migrations,
 // so they can never touch real notes. Returns undefined without DATABASE_URL.
@@ -13,7 +13,7 @@ export async function createTestDb(
   scoped.searchParams.set("options", `-c search_path=${schema},public`);
   const db = createDb({ DATABASE_URL: scoped.href });
   await db.query(`CREATE SCHEMA ${schema}`);
-  const dir = new URL("../../core/migrations/", import.meta.url);
+  const dir = new URL("../migrations/", import.meta.url);
   for (const file of (await readdir(dir)).sort()) {
     const sql = await readFile(new URL(file, dir), "utf8");
     await db.query(sql.split("-- Down Migration")[0] ?? "");
