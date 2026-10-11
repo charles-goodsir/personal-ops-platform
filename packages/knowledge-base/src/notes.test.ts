@@ -1,4 +1,4 @@
-import { createLogger, type Db } from "@ops/core";
+import { createLogger, createTestDb, type Db } from "@ops/core";
 import { mkdtemp, rm, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -6,7 +6,6 @@ import { afterAll, beforeAll, expect, test } from "vitest";
 import type { Embedder } from "./embed.js";
 import { createIngester } from "./ingest.js";
 import { createNotesApi, type NotesApi } from "./notes.js";
-import { createTestDb } from "./test-db.js";
 
 // Fake embedder: one dimension per keyword, so similarity is predictable.
 const KEYWORDS = ["docker", "ssh", "finance"];
