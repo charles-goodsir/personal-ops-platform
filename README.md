@@ -91,6 +91,8 @@ The backups sit on the same disk as the database, so they cover mistakes and cor
 
 ## Security notes
 
+- The mini PC runs only what it needs. A port scan from another machine on the LAN finds just SSH (22) and the MCP server (3000). The printing and modem services are disabled, the old build agent's folder is deleted, and unattended upgrades include Ubuntu's security pocket, which Linux Mint's default config misses. Avahi (`.local` names) is left running.
+
 - Bearer tokens are hashed before a constant-time compare. `MCP_AUTH_TOKENS` takes several tokens so one can be rotated in before the old one is removed.
 - A Host header allowlist protects against DNS rebinding.
 - gitleaks runs as a pre-commit hook and again in CI. CI actions are pinned by commit SHA, and images by digest.
@@ -111,7 +113,8 @@ The backups sit on the same disk as the database, so they cover mistakes and cor
 - A section that times out keeps running in the background until it finishes. None of the current sections hold a connection open.
 - On Mondays the briefing and the weekly summary arrive as two separate messages.
 - Traffic between Claude and the mini PC is plain HTTP on the home LAN. TLS or a Tailscale-only bind would be the production fix.
-- The mini PC has no disk encryption, and SSH password login is left on (LAN-only firewall rule and fail2ban). Both are accepted for now and worth revisiting now that bank data lives there.
+- The mini PC has no disk encryption. Encrypting an existing root disk means a reinstall, and the realistic threat is someone taking a home PC. I accepted that: the Akahu and API tokens can be revoked, `.env` is readable only by its owner, and the backups sit on the same disk. Revisit when the box is next rebuilt.
+- SSH password login is left on, restricted to the LAN by the firewall and watched by fail2ban.
 - On Docker Desktop for Mac, deleting a note doesn't reach the container, so the 15-minute rescan removes it. The mini PC's native Linux mount sees deletes straight away.
 - The first index runs on CPU: 102 notes took about 25 minutes. Later scans skip unchanged files.
 - Deleting the last note leaves it in the index. An empty folder looks like a missing mount, so the scan keeps the index rather than wiping it.
