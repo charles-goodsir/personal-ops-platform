@@ -11,6 +11,7 @@ test("accepts tokens with Akahu's prefixes", () => {
     AKAHU_APP_TOKEN: "app_token_x",
     AKAHU_USER_TOKEN: "user_token_y",
     CLAUDE_BULK_MODEL: "claude-haiku-5-5",
+    FINANCE_HISTORY_START: new Date("2026-01-01T00:00:00Z"),
   });
 });
 
@@ -45,4 +46,10 @@ test("rejects a malformed API key without echoing it", () => {
   expect(bad).toThrow(
     expect.not.objectContaining({ message: expect.stringContaining("oops") }),
   );
+});
+
+test("the history start must be a plain date", () => {
+  expect(() =>
+    loadFinanceConfig({ ...tokens, FINANCE_HISTORY_START: "last year" }),
+  ).toThrow(/FINANCE_HISTORY_START/);
 });

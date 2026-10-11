@@ -31,7 +31,9 @@ if (!classify)
 async function sync() {
   try {
     const accounts = await syncAccounts(db, akahu);
-    const transactions = await syncTransactions(db, akahu);
+    const transactions = await syncTransactions(db, akahu, {
+      historyStart: finance.FINANCE_HISTORY_START,
+    });
     const rules = await applyRules(db);
     const model = classify
       ? await categoriseWithModel(db, classify, logger)

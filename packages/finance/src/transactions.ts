@@ -6,22 +6,32 @@ const DAY = 24 * 60 * 60 * 1000;
 // Akahu has no webhooks for personal apps, and about 0.1% of heavily edited
 // transactions come back with a new id. So every sync re-reads a window and
 // makes the table match it: upsert what's there, delete what vanished.
+// Nothing before historyStart is fetched or kept.
 export async function syncTransactions(
   db: Db,
   akahu: Pick<AkahuClient, "listTransactions">,
-  opts: { now?: Date; windowDays?: number; backfillDays?: number } = {},
+  opts: { historyStart: Date; now?: Date; windowDays?: number },
 ) {
   const now = opts.now ?? new Date();
-  const { rows } = await db.query<{ n: string }>(
-    "SELECT count(*) AS n FROM transactions",
+  const { historyStart } = opts;
+  // Any account with no transactions yet (first run, or one just connected
+  // in Akahu) needs the full history, not just the window.
+  // ponytail: an account that genuinely has no transactions triggers a full
+  // re-read every sync; cheap at this size, per-account fetches if it grows.
+  const { rows } = await db.query<{ missing: boolean }>(
+    `SELECT EXISTS (SELECT 1 FROM accounts a WHERE NOT EXISTS
+       (SELECT 1 FROM transactions t WHERE t.account_id = a.akahu_id)) AS missing`,
   );
-  // First run backfills history (Akahu caps personal apps at about 2 years).
-  const days =
-    Number(rows[0]?.n) === 0
-      ? (opts.backfillDays ?? 730)
-      : (opts.windowDays ?? 14);
-  const start = new Date(now.getTime() - days * DAY);
-  const fetched = await akahu.listTransactions(start, now);
+  const windowStart = new Date(now.getTime() - (opts.windowDays ?? 14) * DAY);
+  const backfill = rows[0]?.missing ?? true;
+  const start =
+    backfill || windowStart < historyStart ? historyStart : windowStart;
+  const days = Math.round((now.getTime() - start.getTime()) / DAY);
+  // Akahu's start is exclusive; 1ms earlier includes a transaction stamped
+  // exactly at historyStart.
+  const fetched = (
+    await akahu.listTransactions(new Date(start.getTime() - 1), now)
+  ).filter((t) => new Date(t.date) >= historyStart);
 
   const client = await db.connect();
   try {
@@ -66,6 +76,12 @@ export async function syncTransactions(
          AND account_id IN (SELECT akahu_id FROM accounts WHERE status = 'ACTIVE')`,
       [start, fetched.map((t) => t._id)],
     );
+    // Keeps the table to the configured history, including after the start
+    // date moves forward. Akahu still has older data if it moves back.
+    const { rowCount: pruned } = await client.query(
+      "DELETE FROM transactions WHERE date < $1",
+      [historyStart],
+    );
     await client.query("COMMIT");
     const added = upserted.filter((r) => r.inserted).length;
     return {
@@ -73,6 +89,7 @@ export async function syncTransactions(
       added,
       updated: upserted.length - added,
       removed: removed ?? 0,
+      pruned: pruned ?? 0,
       days,
     };
   } catch (err) {
