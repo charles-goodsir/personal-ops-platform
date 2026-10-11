@@ -30,6 +30,7 @@ All tools are read-only.
 | `migrate`        | One-shot: runs the SQL migrations, then exits                                           |
 | `ollama`         | Embeddings model server (`nomic-embed-text`). No published port                         |
 | `ollama-pull`    | One-shot: downloads the model into a volume, then exits                                 |
+| `backup`         | Dumps the database at startup and nightly at 03:00 NZ time, keeping 14 days             |
 | `knowledge-base` | Scans the notes folder at startup, watches it for changes, and rescans every 15 minutes |
 | `mcp-server`     | The MCP server. Published on the address set by `MCP_PUBLISH_ADDR`                      |
 
@@ -46,6 +47,19 @@ All tools are read-only.
 7. Add the server to Claude Code: `claude mcp add --scope user --transport http personal-ops-lan http://<host>:3000/mcp --header "Authorization: Bearer <token>"`
 
 For development: `corepack pnpm install`, then `corepack pnpm test`. Integration tests run against Postgres when `DATABASE_URL` is set, in a throwaway schema.
+
+## Backups
+
+`backup` writes `pg_dump -Fc` files to `BACKUP_DIR` (default `./backups`, git-ignored) as the host user, readable only by that user. Set `BACKUP_UID` and `BACKUP_GID` from `id -u` and `id -g`.
+
+Restore into a scratch database to check a dump, or into the real one to recover:
+
+```sh
+docker compose exec -T db sh -c 'createdb -U "$POSTGRES_USER" restore_check'
+docker compose exec -T db sh -c 'pg_restore -U "$POSTGRES_USER" -d restore_check --no-owner' < backups/<file>.dump
+```
+
+The backups sit on the same disk as the database, so they cover mistakes and corruption, not a dead disk.
 
 ## Security notes
 

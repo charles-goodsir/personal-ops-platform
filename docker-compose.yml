@@ -59,6 +59,29 @@ services:
       ollama-pull:
         condition: service_completed_successfully
 
+  # Nightly pg_dump to BACKUP_DIR on the host. Same image as db, so pg_dump
+  # matches the server version. Runs as the host user so dumps aren't root-owned.
+  backup:
+    image: pgvector/pgvector:0.8.7-pg17-bookworm
+    restart: unless-stopped
+    entrypoint: ["/backup.sh"]
+    user: "${BACKUP_UID:-1000}:${BACKUP_GID:-1000}"
+    environment:
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB}
+      TZ: Pacific/Auckland
+      RETAIN_DAYS: ${BACKUP_RETAIN_DAYS:-14}
+    volumes:
+      - ./scripts/backup.sh:/backup.sh:ro
+      - ${BACKUP_DIR:-./backups}:/backups
+    read_only: true
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    depends_on:
+      db:
+        condition: service_healthy
+
   # Indexes the notes folder: full scan at startup, then watches for changes.
   knowledge-base:
     image: personal-ops:local
