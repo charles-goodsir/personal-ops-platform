@@ -37,6 +37,8 @@ Each item has a number, a description, an amount (negative is money out), the
 transaction type, and sometimes a merchant name and a category from my bank's
 data provider. Pick exactly one category per item from the allowed list.
 Money moved between my own accounts, and credit card repayments, are Transfers.
+Money paid into investing platforms (such as Sharesies or KiwiSaver top-ups) is
+Investments.
 Salary, interest earned and refunds are Income. Use Other only when nothing fits.
 Return one result for every item.`;
 

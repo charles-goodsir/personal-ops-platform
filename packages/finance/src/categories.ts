@@ -17,6 +17,7 @@ export const CATEGORIES = [
   "Fees and interest",
   "Income",
   "Transfers",
+  "Investments", // money put into investing platforms: saved, not spent
   "Other",
 ] as const;
 

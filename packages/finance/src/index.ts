@@ -14,3 +14,12 @@ export {
   type Classifier,
 } from "./categorise.js";
 export { createRulesApi, type Rule, type RulesApi } from "./rules.js";
+export {
+  detectRecurring,
+  findAnomalies,
+  loadRecentTxs,
+  payeeKey,
+  type Anomaly,
+  type Recurring,
+  type Tx,
+} from "./insights.js";
