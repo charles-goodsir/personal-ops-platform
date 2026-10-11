@@ -24,13 +24,45 @@ export type AkahuAccount = z.infer<typeof account>;
 
 const accountsResponse = z.object({ items: z.array(account) });
 
+// meta is not parsed at all: it holds meta.other_account (someone's account
+// number) and meta.card_suffix.
+const transaction = z.object({
+  _id: z.string(),
+  _account: z.string(),
+  date: z.string(),
+  description: z.string(),
+  amount: z.number(),
+  type: z.string(),
+  merchant: z.object({ name: z.string() }).optional(),
+  category: z
+    .object({
+      name: z.string(),
+      groups: z
+        .object({ personal_finance: z.object({ name: z.string() }).optional() })
+        .optional(),
+    })
+    .optional(),
+});
+
+export type AkahuTransaction = z.infer<typeof transaction>;
+
+const transactionsPage = z.object({
+  items: z.array(transaction),
+  cursor: z.object({ next: z.string().nullable() }).optional(),
+});
+
 export function createAkahuClient(opts: {
   appToken: string;
   userToken: string;
   baseUrl?: string;
 }) {
-  async function get(path: string): Promise<unknown> {
-    const res = await fetch(new URL(path, opts.baseUrl ?? BASE_URL), {
+  async function get(
+    path: string,
+    params: Record<string, string> = {},
+  ): Promise<unknown> {
+    const url = new URL(path, opts.baseUrl ?? BASE_URL);
+    for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
+    const res = await fetch(url, {
       headers: {
         Authorization: `Bearer ${opts.userToken}`,
         "X-Akahu-Id": opts.appToken,
@@ -50,6 +82,25 @@ export function createAkahuClient(opts: {
   return {
     async listAccounts(): Promise<AkahuAccount[]> {
       return accountsResponse.parse(await get("accounts")).items;
+    },
+
+    // Settled transactions with date in (start, end]: Akahu's start is
+    // exclusive. Follows the cursor until the last page, 100 per page.
+    async listTransactions(
+      start: Date,
+      end: Date,
+    ): Promise<AkahuTransaction[]> {
+      const range = { start: start.toISOString(), end: end.toISOString() };
+      const all: AkahuTransaction[] = [];
+      let cursor: string | null = null;
+      do {
+        const page = transactionsPage.parse(
+          await get("transactions", cursor ? { ...range, cursor } : range),
+        );
+        all.push(...page.items);
+        cursor = page.cursor?.next ?? null;
+      } while (cursor);
+      return all;
     },
   };
 }
