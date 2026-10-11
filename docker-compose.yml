@@ -125,6 +125,28 @@ services:
       migrate:
         condition: service_completed_successfully
 
+  # Sends the daily briefing to Telegram at BRIEFING_TIME (NZ): finance,
+  # notes and weather. A section that fails is skipped.
+  briefing:
+    image: personal-ops:local
+    pull_policy: never
+    command: ["node", "packages/briefing/dist/briefing-main.js"]
+    restart: unless-stopped
+    environment:
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?set in .env}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:?set in .env}
+      BRIEFING_TIME: ${BRIEFING_TIME:-07:00}
+      WEATHER_LAT: ${WEATHER_LAT:?set in .env}
+      WEATHER_LON: ${WEATHER_LON:?set in .env}
+    read_only: true
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
   # Indexes the notes folder: full scan at startup, then watches for changes.
   knowledge-base:
     image: personal-ops:local
