@@ -33,3 +33,30 @@ export function loadFinanceConfig(
   }
   return result.data;
 }
+
+const summarySchema = z.object({
+  // Optional: without a key the summary is still sent, as plain numbers.
+  ANTHROPIC_API_KEY: z
+    .union([z.string().startsWith("sk-ant-"), z.literal("")])
+    .optional(),
+  CLAUDE_SUMMARY_MODEL: z.string().min(1).default("claude-sonnet-5-5"),
+  TELEGRAM_BOT_TOKEN: z.string().regex(/^\d+:[\w-]+$/),
+  // A private chat is a positive number; a group is negative.
+  TELEGRAM_CHAT_ID: z.string().regex(/^-?\d+$/),
+});
+
+export type SummaryConfig = z.infer<typeof summarySchema>;
+
+// The weekly summary needs Telegram but not Akahu, so it loads its own config.
+export function loadSummaryConfig(
+  env: NodeJS.ProcessEnv = process.env,
+): SummaryConfig {
+  const result = summarySchema.safeParse(env);
+  if (!result.success) {
+    const issues = result.error.issues.map(
+      (i) => `${i.path.join(".")}: ${i.message}`,
+    );
+    throw new Error(`Invalid summary config:\n  ${issues.join("\n  ")}`);
+  }
+  return result.data;
+}
