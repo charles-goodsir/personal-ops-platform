@@ -3,6 +3,12 @@ import { z } from "zod";
 const schema = z.object({
   AKAHU_APP_TOKEN: z.string().startsWith("app_token_"),
   AKAHU_USER_TOKEN: z.string().startsWith("user_token_"),
+  // Optional: without it, sync and rules still run and the model step is skipped.
+  // Compose passes an unset variable as "", so empty counts as not set.
+  ANTHROPIC_API_KEY: z
+    .union([z.string().startsWith("sk-ant-"), z.literal("")])
+    .optional(),
+  CLAUDE_BULK_MODEL: z.string().min(1).default("claude-haiku-5-5"),
 });
 
 export type FinanceConfig = z.infer<typeof schema>;

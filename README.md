@@ -70,6 +70,9 @@ The backups sit on the same disk as the database, so they cover mistakes and cor
 
 ## Known limits
 
+- The Claude API key expires on 1 January 2027. When it does, transactions keep syncing and rules keep working, but new transactions stay uncategorised until the key is replaced.
+- Transaction descriptions sent to Claude for categorisation have runs of 6+ digits masked, but names in person-to-person payments are sent as written.
+
 - Traffic between Claude and the mini PC is plain HTTP on the home LAN. TLS or a Tailscale-only bind would be the production fix.
 - On Docker Desktop for Mac, deleting a note doesn't reach the container, so the 15-minute rescan removes it. The mini PC's native Linux mount sees deletes straight away.
 - The first index runs on CPU: 102 notes took about 25 minutes. Later scans skip unchanged files.
