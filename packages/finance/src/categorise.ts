@@ -17,8 +17,10 @@ export type Classifier = (
 ) => Promise<{ id: number; category: Category }[]>;
 
 // Runs of 6+ digits in descriptions are card fragments, references and
-// account-like numbers. They never leave the box.
-export const maskDigits = (s: string) => s.replace(/\d{6,}/g, "[number]");
+// account-like numbers, and a bank's own card mask ("****** 7997") still ends
+// in real card digits. None of them leave the box.
+export const maskDigits = (s: string) =>
+  s.replace(/\*{2,}\s*\d{1,4}/g, "[card]").replace(/\d{6,}/g, "[number]");
 
 // Applies my rules to every transaction, longest matching pattern first, and
 // clears rule categories whose rule has gone so the model can redo them.
