@@ -4,6 +4,46 @@ A self-hosted personal platform on my home mini PC. It has a shared Postgres + p
 
 Status: Phases 1 to 4 complete (foundation, knowledge base, finance agent, daily briefing). Next is Phase 5, polish. See [docs/brief.md](docs/brief.md) for the full plan.
 
+## Why I built it
+
+I wanted Claude to answer from my own notes and my own bank data, and I did not want either handed over wholesale to a hosted service. So the data lives in Postgres on a mini PC at home, the search runs there, and only the minimum goes to the Claude API: masked descriptions and amounts to categorise a transaction, and totals to write a weekly summary. Notes are embedded locally and never leave.
+
+It is also a portfolio project, so each step is its own pull request with tests, and the controls are proven by breaking them on purpose and watching a test fail.
+
+## How it fits together
+
+```mermaid
+flowchart LR
+  subgraph home["Mini PC (Docker Compose)"]
+    kb["knowledge-base"]
+    ollama["Ollama (embeddings)"]
+    fin["finance"]
+    db[("Postgres + pgvector")]
+    mcp["mcp-server"]
+    brief["briefing"]
+    sum["summary"]
+    backup["backup (nightly pg_dump)"]
+    notes[/"Notes folder"/]
+  end
+  akahu["Akahu (bank data)"] --> fin
+  notes --> kb
+  kb <--> ollama
+  kb --> db
+  fin --> db
+  fin -- "masked text" --> api["Claude API"]
+  db --> mcp
+  db --> brief
+  db --> sum
+  db --> backup
+  sum -- "aggregates only" --> api
+  weather["Open-Meteo"] -- "coordinates only" --> brief
+  mcp -- "bearer token, LAN" --> claude["Claude Code"]
+  brief --> tg["Telegram"]
+  sum --> tg
+```
+
+Each module exposes functions from its own package. The MCP server, the briefing and the summary call those functions and never read another module's tables. The [design decisions](#design-decisions) below explain the choices that shaped this.
+
 ## What works now
 
 - Claude connects to the MCP server over streamable HTTP (bearer token) or stdio.
