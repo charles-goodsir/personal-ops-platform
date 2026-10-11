@@ -1,6 +1,7 @@
 #!/bin/sh
 # Nightly Postgres backup: one dump at startup, then every night at 03:00 (TZ).
-# Dumps are owner-only (umask 077) and kept for RETAIN_DAYS.
+# Dumps are owner-only (umask 077) and kept for RETAIN_DAYS. A failed dump
+# exits, so Compose restarts the container and `docker compose ps` shows it.
 set -eu
 umask 077
 
@@ -12,7 +13,8 @@ backup() {
     echo "backup ok: $file ($(du -h "$file" | cut -f1))"
   else
     rm -f "$file.tmp"
-    echo "backup FAILED" >&2
+    echo "backup FAILED, see the error above" >&2
+    exit 1
   fi
   find /backups -name 'ops-*.dump' -mtime +"${RETAIN_DAYS:-14}" -print -delete
 }
