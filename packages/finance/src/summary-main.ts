@@ -1,15 +1,18 @@
 // Sends the weekly spending summary to Telegram every Monday 08:00 NZ.
 // `--once` sends one now and exits. Logs counts only, never message text.
-import { createDb, createLogger, loadConfig } from "@ops/core";
-import { loadSummaryConfig } from "./config.js";
 import {
-  createClaudeSummariser,
+  createDb,
+  createLogger,
   createTelegramSender,
+  loadConfig,
   nextRun,
-  sendWeeklySummary,
-} from "./summary.js";
+  type Schedule,
+} from "@ops/core";
+import { loadSummaryConfig } from "./config.js";
+import { createClaudeSummariser, sendWeeklySummary } from "./summary.js";
 
 const RETRY_MS = 60 * 60 * 1000;
+const WEEKLY: Schedule = { time: "08:00", weekday: 1 };
 
 const config = loadConfig();
 const summary = loadSummaryConfig();
@@ -50,12 +53,14 @@ if (process.argv.includes("--once")) {
     timer = setTimeout(
       () =>
         void run().then((ok) =>
-          schedule(ok ? nextRun(new Date()) : new Date(Date.now() + RETRY_MS)),
+          schedule(
+            ok ? nextRun(new Date(), WEEKLY) : new Date(Date.now() + RETRY_MS),
+          ),
         ),
       at.getTime() - Date.now(),
     );
   };
-  schedule(nextRun(new Date()));
+  schedule(nextRun(new Date(), WEEKLY));
   const shutdown = () => {
     clearTimeout(timer);
     void db.end().then(() => process.exit(0));

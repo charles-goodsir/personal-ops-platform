@@ -1,12 +1,6 @@
 import { createTestDb, type Db, type Logger } from "@ops/core";
 import { afterAll, beforeAll, expect, test, vi } from "vitest";
-import {
-  buildDigest,
-  createTelegramSender,
-  nextRun,
-  plainSummary,
-  sendWeeklySummary,
-} from "./summary.js";
+import { buildDigest, plainSummary, sendWeeklySummary } from "./summary.js";
 
 let testDb: Awaited<ReturnType<typeof createTestDb>>;
 const getDb = (): Db => {
@@ -96,47 +90,5 @@ run("a failing model still sends the plain numbers", async () => {
   expect(warn).toHaveBeenCalled();
   expect(send).toHaveBeenCalledWith(
     plainSummary(await buildDigest(getDb(), now)),
-  );
-});
-
-test("telegram: posts plain text to the chat, errors never carry the token", async () => {
-  const fetchFn = vi.fn(
-    async () =>
-      new Response(
-        JSON.stringify({ ok: false, description: "chat not found" }),
-        {
-          status: 400,
-        },
-      ),
-  );
-  const send = createTelegramSender({
-    token: "123456:secret-token",
-    chatId: "42",
-    fetchFn: fetchFn as unknown as typeof fetch,
-  });
-  const err = await send("hi").catch((e: Error) => e);
-  expect(err).toMatchObject({
-    message: "telegram send failed: 400 chat not found",
-  });
-  const [url, init] = fetchFn.mock.calls[0] as unknown as [string, RequestInit];
-  expect(url).toContain("/sendMessage");
-  expect(JSON.parse(init.body as string)).toEqual({
-    chat_id: "42",
-    text: "hi",
-  });
-});
-
-test("next run: Monday 08:00 NZ, across clock changes", () => {
-  // Monday 07:00 NZDT: later the same day.
-  expect(nextRun(new Date("2026-10-11T18:00:00Z")).toISOString()).toBe(
-    "2026-10-11T19:00:00.000Z",
-  );
-  // Monday 09:00 NZDT: a week on.
-  expect(nextRun(new Date("2026-10-11T20:00:00Z")).toISOString()).toBe(
-    "2026-10-18T19:00:00.000Z",
-  );
-  // Daylight saving ends 4 April 2027: 08:00 that Monday is NZST (+12).
-  expect(nextRun(new Date("2027-03-30T00:00:00Z")).toISOString()).toBe(
-    "2027-04-04T20:00:00.000Z",
   );
 });
