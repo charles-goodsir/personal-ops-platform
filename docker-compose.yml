@@ -82,6 +82,24 @@ services:
       db:
         condition: service_healthy
 
+  # Syncs accounts and transactions from Akahu at startup and every 6 hours.
+  finance:
+    image: personal-ops:local
+    pull_policy: never
+    command: ["node", "packages/finance/dist/finance-main.js"]
+    restart: unless-stopped
+    environment:
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      AKAHU_APP_TOKEN: ${AKAHU_APP_TOKEN:?set in .env}
+      AKAHU_USER_TOKEN: ${AKAHU_USER_TOKEN:?set in .env}
+    read_only: true
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
   # Indexes the notes folder: full scan at startup, then watches for changes.
   knowledge-base:
     image: personal-ops:local
