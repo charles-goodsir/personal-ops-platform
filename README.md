@@ -20,7 +20,11 @@ Status: Phase 2 complete (knowledge base). Next is Phase 3, the finance agent. S
 | `get_note(id)`               | Full text of one note (truncated past 50,000 characters)                     |
 | `list_recent_notes(n)`       | Most recently modified notes, newest first                                   |
 
-All tools are read-only.
+| `add_category_rule(pattern, category)` | Always put matching transactions into a category. Overrides the model |
+| `list_category_rules()` | Rules with how many transactions each matches |
+| `remove_category_rule(pattern)` | Delete a rule; its transactions go back to the model |
+
+Only the two rule-editing tools change data, and they can only change categories: no deletes, nothing sent anywhere, every change logged and reversible. That limit matters because transaction descriptions are partly written by whoever pays me, so text Claude reads from them is untrusted.
 
 ## Services (Docker Compose)
 

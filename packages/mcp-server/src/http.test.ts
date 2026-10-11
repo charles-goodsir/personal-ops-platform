@@ -3,6 +3,7 @@ import type { Server } from "node:http";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { createLogger, type Db } from "@ops/core";
+import type { RulesApi } from "@ops/finance";
 import type { NotesApi } from "@ops/knowledge-base";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { createHttpApp, loadHttpConfig } from "./http.js";
@@ -10,7 +11,9 @@ import { createHttpApp, loadHttpConfig } from "./http.js";
 const tokenA = "a".repeat(32);
 const tokenB = "b".repeat(32);
 const db = { query: async () => ({ rows: [{ ok: 1 }] }) } as unknown as Db;
-const notes = {} as NotesApi; // auth tests never reach the notes tools
+// Auth tests never reach these tools.
+const notes = {} as NotesApi;
+const rules = {} as RulesApi;
 
 let server: Server;
 let url: string;
@@ -18,7 +21,7 @@ let url: string;
 beforeAll(async () => {
   const config = loadHttpConfig({ MCP_AUTH_TOKENS: `${tokenA}, ${tokenB}` });
   const app = createHttpApp(
-    { db, notes, logger: createLogger({ LOG_LEVEL: "fatal" }) },
+    { db, notes, rules, logger: createLogger({ LOG_LEVEL: "fatal" }) },
     config,
   );
   server = await new Promise<Server>((resolve) => {

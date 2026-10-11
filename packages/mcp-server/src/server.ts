@@ -1,5 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { checkDb, type Db, type Logger } from "@ops/core";
+import { CATEGORIES, type RulesApi } from "@ops/finance";
 import type { NotesApi } from "@ops/knowledge-base";
 import { z } from "zod";
 
@@ -7,6 +8,7 @@ export interface Deps {
   db: Db;
   logger: Logger;
   notes: NotesApi;
+  rules: RulesApi;
 }
 
 // Keeps one huge PDF from flooding the conversation.
@@ -14,7 +16,7 @@ export const MAX_NOTE_CHARS = 50_000;
 
 const text = (t: string) => ({ content: [{ type: "text" as const, text: t }] });
 
-export function createServer({ db, logger, notes }: Deps): McpServer {
+export function createServer({ db, logger, notes, rules }: Deps): McpServer {
   const server = new McpServer({ name: "personal-ops", version: "0.0.0" });
 
   server.registerTool(
@@ -110,6 +112,91 @@ export function createServer({ db, logger, notes }: Deps): McpServer {
               `note id ${r.id} | ${r.title} | ${r.path} | modified ${r.modifiedAt.toISOString()}`,
           )
           .join("\n"),
+      );
+    },
+  );
+
+  // The first tools that change data. They can only change categories:
+  // reversible, no deletes, nothing leaves the box. Every change is logged.
+  server.registerTool(
+    "add_category_rule",
+    {
+      title: "Add category rule",
+      description:
+        "Always put transactions whose description or merchant contains `pattern` (case-insensitive) into `category`. Overrides the model's categorisation and replaces any existing rule with the same pattern. Applied immediately; returns how many transactions it matches.",
+      inputSchema: {
+        pattern: z.string().trim().min(2).max(100),
+        category: z.enum(CATEGORIES),
+      },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+      },
+    },
+    async ({ pattern, category }) => {
+      const r = await rules.addRule(pattern, category);
+      logger.info(
+        {
+          pattern: r.pattern,
+          category,
+          replaced: r.replaced,
+          matches: r.matches,
+        },
+        "category rule added",
+      );
+      const was = r.replaced ? ` (was ${r.replaced})` : "";
+      return text(
+        `Rule saved: "${r.pattern}" -> ${r.category}${was}. Matches ${r.matches} transactions; ${r.changed} changed category.`,
+      );
+    },
+  );
+
+  server.registerTool(
+    "list_category_rules",
+    {
+      title: "List category rules",
+      description:
+        "My transaction category rules, with how many transactions each matches.",
+      annotations: { readOnlyHint: true },
+    },
+    async () => {
+      const all = await rules.listRules();
+      if (all.length === 0) return text("No category rules yet.");
+      return text(
+        all
+          .map((r) => `"${r.pattern}" -> ${r.category} (${r.matches} matches)`)
+          .join("\n"),
+      );
+    },
+  );
+
+  server.registerTool(
+    "remove_category_rule",
+    {
+      title: "Remove category rule",
+      description:
+        "Delete the rule with this pattern. Transactions it categorised go back to uncategorised and are recategorised by the model on the next sync.",
+      inputSchema: { pattern: z.string().trim().min(2).max(100) },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: true,
+      },
+    },
+    async ({ pattern }) => {
+      const r = await rules.removeRule(pattern);
+      if (!r.removed)
+        return {
+          ...text(`No rule with pattern "${r.pattern}".`),
+          isError: true,
+        };
+      logger.info(
+        { pattern: r.pattern, uncategorised: r.uncategorised },
+        "category rule removed",
+      );
+      return text(
+        `Rule "${r.pattern}" removed. ${r.uncategorised} transactions are uncategorised until the next sync.`,
       );
     },
   );
