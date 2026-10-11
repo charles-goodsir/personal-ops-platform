@@ -67,3 +67,28 @@ export function createNotesApi(deps: {
 }
 
 export type NotesApi = ReturnType<typeof createNotesApi>;
+
+// Notes whose file was modified since `since`, newest first, with the full
+// count. A plain function: it needs no embedder, so the briefing can use it.
+export async function notesChangedSince(
+  db: Db,
+  since: Date,
+  limit: number,
+): Promise<{ total: number; notes: NoteSummary[] }> {
+  const { rows } = await db.query<NoteSummary & { total: number }>(
+    `SELECT id, title, path, modified_at AS "modifiedAt",
+            count(*) OVER ()::int AS total
+     FROM notes WHERE modified_at >= $1 ORDER BY modified_at DESC LIMIT $2`,
+    [since, limit],
+  );
+  // With no rows there is no count to read, and nothing to count.
+  return {
+    total: rows[0]?.total ?? 0,
+    notes: rows.map((r) => ({
+      id: r.id,
+      title: r.title,
+      path: r.path,
+      modifiedAt: r.modifiedAt,
+    })),
+  };
+}
