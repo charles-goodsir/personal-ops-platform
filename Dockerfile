@@ -7,6 +7,7 @@ COPY packages/core/package.json packages/core/
 COPY packages/mcp-server/package.json packages/mcp-server/
 COPY packages/knowledge-base/package.json packages/knowledge-base/
 COPY packages/finance/package.json packages/finance/
+COPY packages/briefing/package.json packages/briefing/
 
 FROM base AS build
 RUN pnpm install --frozen-lockfile --ignore-scripts
@@ -25,6 +26,7 @@ COPY --from=build /app/packages/core/dist packages/core/dist
 COPY --from=build /app/packages/mcp-server/dist packages/mcp-server/dist
 COPY --from=build /app/packages/knowledge-base/dist packages/knowledge-base/dist
 COPY --from=build /app/packages/finance/dist packages/finance/dist
+COPY --from=build /app/packages/briefing/dist packages/briefing/dist
 COPY packages/core/migrations packages/core/migrations
 USER node
 CMD ["node", "packages/mcp-server/dist/http-main.js"]
