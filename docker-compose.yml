@@ -104,6 +104,27 @@ services:
       migrate:
         condition: service_completed_successfully
 
+  # Sends the weekly spending summary to Telegram, Monday 08:00 NZ.
+  summary:
+    image: personal-ops:local
+    pull_policy: never
+    command: ["node", "packages/finance/dist/summary-main.js"]
+    restart: unless-stopped
+    environment:
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?set in .env}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:?set in .env}
+      # Optional: without a key the summary is plain numbers.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      CLAUDE_SUMMARY_MODEL: ${CLAUDE_SUMMARY_MODEL:-claude-sonnet-5-5}
+    read_only: true
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
   # Indexes the notes folder: full scan at startup, then watches for changes.
   knowledge-base:
     image: personal-ops:local

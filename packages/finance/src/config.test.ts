@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { loadFinanceConfig } from "./config.js";
+import { loadFinanceConfig, loadSummaryConfig } from "./config.js";
 
 test("accepts tokens with Akahu's prefixes", () => {
   expect(
@@ -52,4 +52,28 @@ test("the history start must be a plain date", () => {
   expect(() =>
     loadFinanceConfig({ ...tokens, FINANCE_HISTORY_START: "last year" }),
   ).toThrow(/FINANCE_HISTORY_START/);
+});
+
+const summaryEnv = {
+  TELEGRAM_BOT_TOKEN: "123456:abc-DEF_x",
+  TELEGRAM_CHAT_ID: "987654321",
+};
+
+test("summary config defaults the model and treats an empty key as unset", () => {
+  const c = loadSummaryConfig({ ...summaryEnv, ANTHROPIC_API_KEY: "" });
+  expect(c.CLAUDE_SUMMARY_MODEL).toBe("claude-sonnet-5-5");
+  expect(c.ANTHROPIC_API_KEY).toBeFalsy();
+});
+
+test("summary config rejects bad Telegram values without echoing them", () => {
+  const bad = () =>
+    loadSummaryConfig({
+      TELEGRAM_BOT_TOKEN: "oops-token",
+      TELEGRAM_CHAT_ID: "oops-chat",
+    });
+  expect(bad).toThrow(/TELEGRAM_BOT_TOKEN[\s\S]*TELEGRAM_CHAT_ID/);
+  expect(bad).toThrow(
+    expect.not.objectContaining({ message: expect.stringContaining("oops") }),
+  );
+  expect(loadSummaryConfig({ ...summaryEnv, TELEGRAM_CHAT_ID: "-100123" }));
 });
