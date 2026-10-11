@@ -15,13 +15,15 @@ beforeEach(async () => {
   await mkdir(join(dir, "sub"));
   vi.clearAllMocks();
   const queue = createQueue(logger);
-  close = watchNotes({
+  const watcher = watchNotes({
     notesDir: dir,
     ingester,
     enqueue: queue.enqueue,
     logger,
     debounceMs: 100,
-  }).close;
+  });
+  close = watcher.close;
+  await watcher.ready();
 });
 
 afterEach(async () => {

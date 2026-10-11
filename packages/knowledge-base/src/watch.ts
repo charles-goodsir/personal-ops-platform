@@ -1,5 +1,5 @@
 import { watch } from "node:fs";
-import { access } from "node:fs/promises";
+import { access, rm, writeFile } from "node:fs/promises";
 import { extname, join } from "node:path";
 import type { Logger } from "@ops/core";
 import { SUPPORTED } from "./extract.js";
@@ -43,8 +43,13 @@ export function watchNotes(deps: {
       else await ingester.removeFile(path);
     });
 
+  const probe = `.watch-ready-${process.pid}-${Date.now()}`;
+  let seen!: () => void;
+  const seenProbe = new Promise<void>((r) => (seen = r));
+
   const watcher = watch(notesDir, { recursive: true }, (_event, filename) => {
     if (!filename) return;
+    if (filename === probe) return seen();
     const path = filename.split("\\").join("/");
     if (path.split("/").some((part) => part.startsWith("."))) return;
     if (!SUPPORTED.has(extname(path).toLowerCase())) return;
@@ -63,6 +68,21 @@ export function watchNotes(deps: {
   );
 
   return {
+    // fs.watch has no ready signal and a recursive watch can start after it
+    // returns, losing events from the gap. This writes a hidden probe file
+    // until the watcher reports it. Optional: watch-main skips it so it never
+    // writes into the notes folder.
+    async ready(timeoutMs = 5000) {
+      const deadline = Date.now() + timeoutMs;
+      let done = false;
+      void seenProbe.then(() => (done = true));
+      while (!done && Date.now() < deadline) {
+        await writeFile(join(notesDir, probe), String(Date.now()));
+        await new Promise((r) => setTimeout(r, 50));
+      }
+      await rm(join(notesDir, probe), { force: true });
+      if (!done) throw new Error("watcher did not become ready");
+    },
     close() {
       watcher.close();
       for (const t of timers.values()) clearTimeout(t);
