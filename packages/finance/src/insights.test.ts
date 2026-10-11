@@ -110,11 +110,12 @@ test("flags a big first charge from a new payee, not a small one or a familiar o
   ]);
 });
 
-test("transfers and income are never anomalies", () => {
+test("transfers, income and investments are never anomalies", () => {
   const found = findAnomalies(
     [
       tx(1, "RENT TO LANDLORD", -2000, "Transfers"),
       tx(1, "BONUS", 5000, "Income"),
+      tx(1, "SHARESIES BLINKPAY", -500, "Investments"),
     ],
     ago(7),
     now,

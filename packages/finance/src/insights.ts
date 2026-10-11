@@ -107,7 +107,8 @@ export type Anomaly = Tx & {
   detail: string;
 };
 
-const IGNORED = new Set(["Transfers", "Income"]);
+// Not spending, so never "unusual spending".
+const IGNORED = new Set(["Transfers", "Income", "Investments"]);
 
 // Unusual money out in [since, now): far above the category's normal, or a
 // big first charge from a payee not seen for a year. A known recurring charge
