@@ -41,7 +41,7 @@ All tools are read-only.
 1. Install Docker with Compose.
 2. Clone the repo and `cp .env.example .env`.
 3. Fill in `.env`: a Postgres password, and `MCP_AUTH_TOKENS` (generate one with `openssl rand -hex 32`).
-4. Set `NOTES_DIR` to your notes folder. It defaults to `./notes`, which git ignores.
+4. Create the backups folder as your user, `mkdir backups`, so Docker doesn't create it owned by root. Set `NOTES_DIR` to your notes folder. It defaults to `./notes`, which git ignores.
 5. On the mini PC, set `MCP_PUBLISH_ADDR` and `MCP_ALLOWED_HOSTS` to its LAN IP, and allow the port through the firewall.
 6. `docker compose up -d --build`. The first run downloads the model (about 274 MB) and indexes every note.
 7. Add the server to Claude Code: `claude mcp add --scope user --transport http personal-ops-lan http://<host>:3000/mcp --header "Authorization: Bearer <token>"`
