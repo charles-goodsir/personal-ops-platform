@@ -6,3 +6,10 @@ export {
 } from "./akahu.js";
 export { loadFinanceConfig, type FinanceConfig } from "./config.js";
 export { syncTransactions } from "./transactions.js";
+export { CATEGORIES, type Category } from "./categories.js";
+export {
+  applyRules,
+  categoriseWithModel,
+  maskDigits,
+  type Classifier,
+} from "./categorise.js";

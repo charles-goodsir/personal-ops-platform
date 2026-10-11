@@ -93,6 +93,9 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       AKAHU_APP_TOKEN: ${AKAHU_APP_TOKEN:?set in .env}
       AKAHU_USER_TOKEN: ${AKAHU_USER_TOKEN:?set in .env}
+      # Optional: without a key, transactions sync but only my rules categorise them.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      CLAUDE_BULK_MODEL: ${CLAUDE_BULK_MODEL:-claude-haiku-5-5}
     read_only: true
     security_opt: ["no-new-privileges:true"]
     cap_drop: [ALL]
