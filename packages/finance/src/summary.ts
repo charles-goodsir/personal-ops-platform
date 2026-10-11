@@ -137,37 +137,6 @@ export function createClaudeSummariser(opts: {
   };
 }
 
-// Plain text, no parse_mode, so nothing in the message can break formatting.
-// Errors carry Telegram's description only: the URL holds the bot token.
-export function createTelegramSender(opts: {
-  token: string;
-  chatId: string;
-  fetchFn?: typeof fetch;
-}) {
-  const doFetch = opts.fetchFn ?? fetch;
-  return async (text: string): Promise<void> => {
-    const res = await doFetch(
-      `https://api.telegram.org/bot${opts.token}/sendMessage`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          chat_id: opts.chatId,
-          text: text.slice(0, 4000),
-        }),
-      },
-    );
-    if (!res.ok) {
-      const body = (await res.json().catch(() => ({}))) as {
-        description?: string;
-      };
-      throw new Error(
-        `telegram send failed: ${res.status} ${body.description ?? ""}`.trim(),
-      );
-    }
-  };
-}
-
 export async function sendWeeklySummary(opts: {
   db: Db;
   send: (text: string) => Promise<void>;
@@ -185,36 +154,4 @@ export async function sendWeeklySummary(opts: {
     }
   }
   await opts.send(text);
-}
-
-// Monday 08:00 in New Zealand, after `now`.
-const TZ = "Pacific/Auckland";
-const RUN_HOUR = 8;
-
-const offsetMs = (t: number) => {
-  const name =
-    new Intl.DateTimeFormat("en", { timeZone: TZ, timeZoneName: "longOffset" })
-      .formatToParts(t)
-      .find((p) => p.type === "timeZoneName")?.value ?? "";
-  const m = /([+-])(\d\d):(\d\d)/.exec(name);
-  if (!m) return 0;
-  return (m[1] === "-" ? -1 : 1) * (Number(m[2]) * 60 + Number(m[3])) * 60_000;
-};
-
-export function nextRun(now: Date): Date {
-  // NZ wall clock, read through UTC fields.
-  const local = new Date(now.getTime() + offsetMs(now.getTime()));
-  for (let d = 0; d <= 7; d++) {
-    const wall = Date.UTC(
-      local.getUTCFullYear(),
-      local.getUTCMonth(),
-      local.getUTCDate() + d,
-      RUN_HOUR,
-    );
-    if (new Date(wall).getUTCDay() !== 1) continue;
-    // Clock changes happen at 2-3am, so the offset 12h before 08:00 is the one in force at 08:00.
-    const at = new Date(wall - offsetMs(wall - 12 * 3_600_000));
-    if (at > now) return at;
-  }
-  throw new Error("no Monday found in the next 8 days");
 }
