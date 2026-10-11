@@ -56,6 +56,14 @@ const addRule = (pattern: string, category: string) =>
     [pattern, category],
   );
 
+test("maskDigits hides the digits after a bank's card mask", () => {
+  expect(maskDigits("TM *Ticketmaster 24 4835****** 7997")).toBe(
+    "TM *Ticketmaster 24 4835[card]",
+  );
+  expect(maskDigits("CARD ****1234 PURCHASE")).toBe("CARD [card] PURCHASE");
+  expect(maskDigits("TM *Ticketmaster")).toBe("TM *Ticketmaster");
+});
+
 test("maskDigits hides runs of 6 or more digits only", () => {
   expect(maskDigits("COUNTDOWN 4835123456 STORE 12")).toBe(
     "COUNTDOWN [number] STORE 12",

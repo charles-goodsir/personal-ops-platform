@@ -23,3 +23,18 @@ export {
   type Recurring,
   type Tx,
 } from "./insights.js";
+export {
+  dateRange,
+  PERIODS,
+  resolvePeriod,
+  type Period,
+  type Range,
+} from "./periods.js";
+export {
+  createFinanceApi,
+  type CategorySpending,
+  type FinanceApi,
+  type Spending,
+  type TxFilters,
+  type TxRow,
+} from "./read.js";

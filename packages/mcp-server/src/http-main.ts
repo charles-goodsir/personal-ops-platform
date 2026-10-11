@@ -1,5 +1,5 @@
 import { createDb, createLogger, loadConfig } from "@ops/core";
-import { createRulesApi } from "@ops/finance";
+import { createFinanceApi, createRulesApi } from "@ops/finance";
 import { createEmbedder, createNotesApi } from "@ops/knowledge-base";
 import { createHttpApp, loadHttpConfig } from "./http.js";
 
@@ -14,7 +14,13 @@ const notes = createNotesApi({
 });
 
 const server = createHttpApp(
-  { db, logger, notes, rules: createRulesApi(db) },
+  {
+    db,
+    logger,
+    notes,
+    rules: createRulesApi(db),
+    finance: createFinanceApi(db),
+  },
   http,
 ).listen(http.MCP_HTTP_PORT, http.MCP_HTTP_HOST, () => {
   logger.info(

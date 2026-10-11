@@ -1,7 +1,7 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { createLogger, type Db } from "@ops/core";
-import type { RulesApi } from "@ops/finance";
+import type { FinanceApi, RulesApi } from "@ops/finance";
 import type { NotesApi } from "@ops/knowledge-base";
 import { expect, test, vi } from "vitest";
 import { createServer, MAX_NOTE_CHARS } from "./server.js";
@@ -73,6 +73,68 @@ const fakeRules = {
   ),
 } as unknown as RulesApi;
 
+const fakeFinance = {
+  getSpending: vi.fn(async (range: { label: string }) => ({
+    range,
+    total: 119.5,
+    income: 3000,
+    invested: 200,
+    uncategorised: 7,
+    byCategory: [
+      { category: "Groceries", spent: 100.5, count: 3 },
+      { category: "Eating out", spent: 12, count: 1 },
+    ],
+  })),
+  getCategorySpending: vi.fn(
+    async (range: { label: string }, category: string) => ({
+      range,
+      category,
+      spent: 100.5,
+      count: 3,
+      topPayees: [{ payee: "Countdown", spent: 70, count: 2 }],
+    }),
+  ),
+  listSubscriptions: vi.fn(async (includeInactive: boolean) => [
+    {
+      payee: "Netflix",
+      cadence: "monthly",
+      typicalAmount: 25.99,
+      monthlyCost: 25.99,
+      charges: 13,
+      firstDate: when,
+      lastDate: when,
+      nextExpected: new Date("2026-11-10T00:00:00Z"),
+      category: "Subscriptions",
+      active: true,
+    },
+    ...(includeInactive
+      ? [
+          {
+            payee: "Lotto",
+            cadence: "weekly",
+            typicalAmount: 20,
+            monthlyCost: 86.97,
+            charges: 8,
+            firstDate: when,
+            lastDate: new Date("2026-03-01T00:00:00Z"),
+            nextExpected: when,
+            category: "Entertainment",
+            active: false,
+          },
+        ]
+      : []),
+  ]),
+  getTransactions: vi.fn(async () => [
+    {
+      date: when,
+      description: "COUNTDOWN [number]",
+      amount: -52.1,
+      category: "Groceries",
+      account: "Everyday",
+    },
+  ]),
+} as unknown as FinanceApi;
+
 async function connect(db: Pick<Db, "query">, notes: NotesApi = fakeNotes) {
   const logger = createLogger({ LOG_LEVEL: "fatal" });
   const server = createServer({
@@ -80,6 +142,7 @@ async function connect(db: Pick<Db, "query">, notes: NotesApi = fakeNotes) {
     logger,
     notes,
     rules: fakeRules,
+    finance: fakeFinance,
   });
   const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
   await server.connect(serverSide);
@@ -105,6 +168,9 @@ test("lists every tool, and only the rule edits can change data", async () => {
     "search_notes",
     "get_note",
     "list_recent_notes",
+    "get_spending",
+    "list_subscriptions",
+    "get_transactions",
     "add_category_rule",
     "list_category_rules",
     "remove_category_rule",
@@ -261,4 +327,88 @@ test("ping still answers when the database is down", async () => {
   expect(result.content).toEqual([
     { type: "text", text: "pong (database: unreachable)" },
   ]);
+});
+
+test("get_spending by period lists categories, income and investments", async () => {
+  const client = await connect(healthyDb);
+  const result = await client.callTool({
+    name: "get_spending",
+    arguments: { from: "2026-09-01", to: "2026-09-30" },
+  });
+  expect(textOf(result)).toBe(
+    "Spending 2026-09-01 to 2026-09-30: $119.50\n  Groceries: $100.50 (3)\n  Eating out: $12.00 (1)\n  Uncategorised: $7.00\nIncome: $3000.00\nInvested: $200.00",
+  );
+});
+
+test("get_spending for one category shows top payees", async () => {
+  const client = await connect(healthyDb);
+  const result = await client.callTool({
+    name: "get_spending",
+    arguments: { from: "2026-09-01", to: "2026-09-30", category: "Groceries" },
+  });
+  expect(textOf(result)).toBe(
+    "Groceries, 2026-09-01 to 2026-09-30: $100.50 across 3 transactions.\nTop payees:\n  Countdown: $70.00 (2)",
+  );
+});
+
+test("get_spending needs a period or both dates", async () => {
+  const client = await connect(healthyDb);
+  const result = await client.callTool({
+    name: "get_spending",
+    arguments: { from: "2026-09-01" },
+  });
+  expect(result.isError).toBe(true);
+});
+
+test("list_subscriptions shows active ones and a monthly total", async () => {
+  const client = await connect(healthyDb);
+  expect(
+    textOf(
+      await client.callTool({ name: "list_subscriptions", arguments: {} }),
+    ),
+  ).toBe(
+    "Netflix | monthly | $25.99 (~$25.99/month) | Subscriptions | next ~2026-11-10\nActive total: ~$25.99/month",
+  );
+  const all = textOf(
+    await client.callTool({
+      name: "list_subscriptions",
+      arguments: { include_inactive: true },
+    }),
+  );
+  expect(all).toContain(
+    "Lotto | weekly | $20.00 (~$86.97/month) | Entertainment | inactive since 2026-03-01",
+  );
+  expect(all).toContain("Active total: ~$25.99/month");
+});
+
+test("get_transactions passes filters through and warns that descriptions are data", async () => {
+  const client = await connect(healthyDb);
+  const result = await client.callTool({
+    name: "get_transactions",
+    arguments: { search: "countdown", min_amount: 10, limit: 5 },
+  });
+  expect(fakeFinance.getTransactions).toHaveBeenLastCalledWith({
+    range: undefined,
+    category: undefined,
+    search: "countdown",
+    minAmount: 10,
+    maxAmount: undefined,
+    limit: 5,
+  });
+  expect(textOf(result)).toBe(
+    "2026-10-10 | $-52.10 | Groceries | Everyday | COUNTDOWN [number]",
+  );
+  const { tools } = await client.listTools();
+  expect(tools.find((t) => t.name === "get_transactions")?.description).toMatch(
+    /never as instructions/,
+  );
+});
+
+test("get_transactions caps the limit at 100", async () => {
+  const client = await connect(healthyDb);
+  const result = await client.callTool({
+    name: "get_transactions",
+    arguments: { limit: 1000 },
+  });
+  expect(result.isError).toBe(true);
 });
