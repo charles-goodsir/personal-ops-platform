@@ -41,6 +41,9 @@ importers:
       '@ops/knowledge-base':
         specifier: workspace:*
         version: link:../knowledge-base
+      zod:
+        specifier: 4.6.5
+        version: 4.6.5
 
   packages/core:
     dependencies:
