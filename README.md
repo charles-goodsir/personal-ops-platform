@@ -60,6 +60,17 @@ The app services run from one image as a non-root user, with a read-only filesys
 
 Account numbers and holder names are kept out by construction: the Akahu parser never reads them, and the table has no column for them. The `meta` block is not parsed at all, because it carries other people's account numbers.
 
+## Design decisions
+
+Short records of the choices that shaped the project, with what I rejected and what each costs:
+
+1. [One TypeScript monorepo on one Postgres](docs/adr/0001-stack.md)
+2. [Embed notes locally with Ollama](docs/adr/0002-local-embeddings.md)
+3. [Bearer tokens and a Host allowlist for the MCP server](docs/adr/0003-mcp-auth.md)
+4. [Data model: versioned vectors, and transactions that follow the source](docs/adr/0004-data-model.md)
+5. [What leaves the box: masking, aggregates and a small write surface](docs/adr/0005-finance-privacy.md)
+6. [A daily briefing built from plain code, and a separate weekly summary](docs/adr/0006-briefing-without-a-model.md)
+
 ## Setup
 
 1. Install Docker with Compose.
