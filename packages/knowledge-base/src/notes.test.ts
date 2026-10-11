@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import type { Embedder } from "./embed.js";
 import { createIngester } from "./ingest.js";
-import { createNotesApi, type NotesApi } from "./notes.js";
+import { createNotesApi, notesChangedSince, type NotesApi } from "./notes.js";
 
 // Fake embedder: one dimension per keyword, so similarity is predictable.
 const KEYWORDS = ["docker", "ssh", "finance"];
@@ -97,5 +97,20 @@ test.skipIf(!process.env.DATABASE_URL)(
     const recent = await notes.listRecentNotes(2);
     expect(recent.map((n) => n.path)).toEqual(["money.txt", "ssh.md"]);
     expect(recent[0]?.modifiedAt).toEqual(new Date("2026-10-03T00:00:00Z"));
+  },
+);
+
+test.skipIf(!process.env.DATABASE_URL)(
+  "notesChangedSince counts every match but returns only the newest few",
+  async () => {
+    const db = testDb?.db as Db;
+    const since = new Date("2026-10-02T00:00:00Z");
+    const one = await notesChangedSince(db, since, 1);
+    expect(one.total).toBe(2);
+    expect(one.notes.map((n) => n.path)).toEqual(["money.txt"]);
+    expect(one.notes[0]).not.toHaveProperty("total");
+    expect(
+      await notesChangedSince(db, new Date("2027-01-01T00:00:00Z"), 5),
+    ).toEqual({ total: 0, notes: [] });
   },
 );
