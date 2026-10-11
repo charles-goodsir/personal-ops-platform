@@ -35,6 +35,9 @@ importers:
       '@ops/core':
         specifier: workspace:*
         version: link:../core
+      '@ops/finance':
+        specifier: workspace:*
+        version: link:../finance
 
   packages/core:
     dependencies:
