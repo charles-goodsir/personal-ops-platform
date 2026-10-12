@@ -1,3 +1,4 @@
+import type { JobRun } from "@ops/core";
 import type { FinanceApi } from "@ops/finance";
 import { beforeEach, expect, test, vi } from "vitest";
 import { createCommandHandler } from "./commands.js";
@@ -12,10 +13,12 @@ const finance = {
 };
 const notes = { searchNotes: vi.fn() };
 const briefing = vi.fn();
+const jobs = vi.fn();
 const handle = createCommandHandler({
   finance: finance as unknown as FinanceApi,
   notes,
   briefing,
+  jobs,
   now: () => now,
 });
 const hit = (noteId: string, title: string, path: string) => ({
@@ -47,6 +50,7 @@ beforeEach(() => {
   finance.listSubscriptions.mockResolvedValue([]);
   notes.searchNotes.mockResolvedValue([]);
   briefing.mockResolvedValue("the briefing");
+  jobs.mockResolvedValue([]);
 });
 
 test("/spend with nothing defaults to this month, all categories", async () => {
@@ -146,4 +150,39 @@ test("/notes shows at most five notes, and says when nothing matched or no words
 test("/briefing sends whatever the briefing builds", async () => {
   expect(await handle("/briefing")).toBe("the briefing");
   expect(briefing).toHaveBeenCalledOnce();
+});
+
+const hoursAgo = (h: number) => new Date(now.getTime() - h * 3_600_000);
+const run = (job: string, over: Partial<JobRun>): JobRun => ({
+  job,
+  lastSuccess: null,
+  lastFailure: null,
+  consecutiveFailures: 0,
+  alertedAt: null,
+  ...over,
+});
+
+test("/status shows each job: ok, failing, late, or not yet run", async () => {
+  jobs.mockResolvedValue([
+    run("finance-sync", { lastSuccess: hoursAgo(3) }),
+    run("knowledge-base-scan", { lastSuccess: hoursAgo(0.2) }),
+    run("briefing", { lastSuccess: hoursAgo(20), consecutiveFailures: 2 }),
+    run("backup", { lastSuccess: hoursAgo(80) }),
+  ]);
+  expect(await handle("/status")).toBe(
+    [
+      "finance-sync: ok, 3h ago",
+      "knowledge-base-scan: ok, 12m ago",
+      "briefing: failing (2 in a row), last ok 20h ago",
+      "summary: no run recorded yet",
+      "backup: LATE, last ok 3d ago",
+    ].join("\n"),
+  );
+});
+
+test("/status says so when a job has failed and never succeeded", async () => {
+  jobs.mockResolvedValue([run("summary", { consecutiveFailures: 3 })]);
+  expect(await handle("/status")).toContain(
+    "summary: failing (3 in a row), never succeeded",
+  );
 });

@@ -7,7 +7,7 @@ import {
   runBriefing,
   weatherSection,
 } from "@ops/briefing";
-import { createDb, createLogger, loadConfig } from "@ops/core";
+import { createDb, createLogger, listJobRuns, loadConfig } from "@ops/core";
 import { createFinanceApi } from "@ops/finance";
 import { createEmbedder, createNotesApi } from "@ops/knowledge-base";
 import { createCommandHandler } from "./commands.js";
@@ -38,6 +38,7 @@ const bot = createBot({
       model: config.EMBED_MODEL,
     }),
     briefing: () => runBriefing(sections, { logger }),
+    jobs: () => listJobRuns(db),
   }),
 });
 

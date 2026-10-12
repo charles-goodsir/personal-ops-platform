@@ -1,7 +1,14 @@
 import { afterAll, beforeAll, expect, test } from "vitest";
 import type { Db } from "./db.js";
 import { vi } from "vitest";
-import { listJobRuns, recordRun, trackRun } from "./job-runs.js";
+import {
+  jobHealth,
+  listJobRuns,
+  MAX_QUIET_MS,
+  recordRun,
+  trackRun,
+  type JobRun,
+} from "./job-runs.js";
 import { createTestDb } from "./test-db.js";
 
 let testDb: Awaited<ReturnType<typeof createTestDb>>;
@@ -118,4 +125,55 @@ test("trackRun keeps the job's result when the heartbeat can't be written", asyn
     }),
   ).toBe(false);
   expect(log.warn).toHaveBeenCalledTimes(2);
+});
+
+const at = new Date("2026-10-12T12:00:00Z");
+const hoursAgo = (h: number) => new Date(at.getTime() - h * 3_600_000);
+const row = (over: Partial<JobRun>): JobRun => ({
+  job: "finance-sync",
+  lastSuccess: null,
+  lastFailure: null,
+  consecutiveFailures: 0,
+  alertedAt: null,
+  ...over,
+});
+
+test("jobHealth: ok inside the window, late just past it", () => {
+  const limit = MAX_QUIET_MS["finance-sync"] / 3_600_000;
+  expect(
+    jobHealth("finance-sync", row({ lastSuccess: hoursAgo(limit - 0.1) }), at)
+      .state,
+  ).toBe("ok");
+  expect(
+    jobHealth("finance-sync", row({ lastSuccess: hoursAgo(limit + 0.1) }), at)
+      .state,
+  ).toBe("late");
+});
+
+test("jobHealth: failing inside the window, late once it runs out, never without a success", () => {
+  const failing = row({ lastSuccess: hoursAgo(2), consecutiveFailures: 2 });
+  expect(jobHealth("finance-sync", failing, at)).toMatchObject({
+    state: "failing",
+    failures: 2,
+  });
+  expect(
+    jobHealth("finance-sync", { ...failing, lastSuccess: hoursAgo(20) }, at)
+      .state,
+  ).toBe("late");
+  expect(jobHealth("summary", undefined, at)).toEqual({
+    state: "never",
+    failures: 0,
+  });
+  expect(
+    jobHealth("summary", row({ job: "summary", consecutiveFailures: 4 }), at),
+  ).toEqual({ state: "never", failures: 4 });
+});
+
+test("each job's quiet limit matches how often it runs", () => {
+  const h = (job: keyof typeof MAX_QUIET_MS) => MAX_QUIET_MS[job] / 3_600_000;
+  expect(h("knowledge-base-scan")).toBeGreaterThan(0.25); // runs every 15 minutes
+  expect(h("finance-sync")).toBeGreaterThan(6); // every 6 hours
+  expect(h("backup")).toBeGreaterThan(24); // nightly
+  expect(h("briefing")).toBeGreaterThan(24); // daily
+  expect(h("summary")).toBeGreaterThan(7 * 24); // weekly
 });

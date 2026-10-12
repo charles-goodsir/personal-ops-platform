@@ -77,3 +77,39 @@ export async function trackRun(
   }
   return ok;
 }
+
+const HOUR = 3_600_000;
+
+// How long each job may go without a success before something is wrong. The
+// notes scan runs every 15 minutes, the finance sync every 6 hours, the
+// backup and the briefing daily, the summary weekly. Each has slack for one
+// missed run.
+export const MAX_QUIET_MS: Record<Job, number> = {
+  "finance-sync": 13 * HOUR,
+  "knowledge-base-scan": 1 * HOUR,
+  briefing: 26 * HOUR,
+  summary: 8 * 24 * HOUR,
+  backup: 26 * HOUR,
+};
+
+export type JobHealth =
+  | { state: "never"; failures: number } // no success recorded yet
+  | { state: "ok"; ageMs: number }
+  | { state: "failing"; ageMs: number; failures: number } // failed since, still inside its window
+  | { state: "late"; ageMs: number }; // quiet for too long: this is what alerts
+
+// A job that has never succeeded is not "late": the weekly summary, for one,
+// has nothing to report until its first Monday.
+export function jobHealth(
+  job: Job,
+  run: JobRun | undefined,
+  now: Date,
+): JobHealth {
+  if (!run?.lastSuccess)
+    return { state: "never", failures: run?.consecutiveFailures ?? 0 };
+  const ageMs = now.getTime() - run.lastSuccess.getTime();
+  if (ageMs > MAX_QUIET_MS[job]) return { state: "late", ageMs };
+  if (run.consecutiveFailures > 0)
+    return { state: "failing", ageMs, failures: run.consecutiveFailures };
+  return { state: "ok", ageMs };
+}

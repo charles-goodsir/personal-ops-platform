@@ -9,6 +9,7 @@ import {
   type Period,
 } from "@ops/finance";
 import type { NotesApi } from "@ops/knowledge-base";
+import { JOBS, jobHealth, type JobRun } from "@ops/core";
 import type { Handler } from "./poller.js";
 
 const HELP = `Commands:
@@ -16,6 +17,7 @@ const HELP = `Commands:
 /subs [all]  recurring charges
 /notes <words>  titles and paths of matching notes
 /briefing  send the daily briefing now
+/status  when each background job last worked
 /help
 
 Periods: ${PERIODS.map((p) => p.replace(/_/g, " ")).join(", ")}
@@ -23,6 +25,13 @@ Categories: ${CATEGORIES.join(", ")}`;
 
 const MAX_LENGTH = 100;
 const NOTES_SHOWN = 5;
+
+function ago(ms: number): string {
+  const minutes = Math.max(0, Math.round(ms / 60_000));
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.round(minutes / 60);
+  return hours < 48 ? `${hours}h` : `${Math.round(hours / 24)}d`;
+}
 
 // "last month Eating out" -> the period, and what is left over as a category.
 // A period can be written with spaces or underscores.
@@ -43,6 +52,7 @@ export function createCommandHandler(deps: {
   finance: FinanceApi;
   notes: Pick<NotesApi, "searchNotes">;
   briefing: () => Promise<string>;
+  jobs: () => Promise<JobRun[]>;
   now?: () => Date;
 }): Handler {
   const now = deps.now ?? (() => new Date());
@@ -95,6 +105,28 @@ export function createCommandHandler(deps: {
       }
       case "/briefing":
         return deps.briefing();
+      case "/status": {
+        const runs = await deps.jobs();
+        return JOBS.map((job) => {
+          const h = jobHealth(
+            job,
+            runs.find((r) => r.job === job),
+            now(),
+          );
+          switch (h.state) {
+            case "never":
+              return h.failures
+                ? `${job}: failing (${h.failures} in a row), never succeeded`
+                : `${job}: no run recorded yet`;
+            case "ok":
+              return `${job}: ok, ${ago(h.ageMs)} ago`;
+            case "failing":
+              return `${job}: failing (${h.failures} in a row), last ok ${ago(h.ageMs)} ago`;
+            case "late":
+              return `${job}: LATE, last ok ${ago(h.ageMs)} ago`;
+          }
+        }).join("\n");
+      }
       default:
         return "Unknown command. Send /help.";
     }
