@@ -1,0 +1,75 @@
+# Risk assessment
+
+Scope: the Personal Ops Platform as it runs on my home mini PC: the notes knowledge base, the finance agent, the MCP server, the Telegram bot and its messages, the heartbeats and watchdog, the outside check, and the diary message. Assessed on 12 October 2026 by me, the only user and operator. I review it whenever I add a data flow, a tool that changes data, or a new way in.
+
+This is a small personal system, so the scale is plain: **likelihood** (L) and **impact** (I) are Low, Medium or High, and the residual rating is what is left after the controls. The controls named here are in the code, the compose file or the ADRs, and the [README](README.md) says where I proved them.
+
+## What I am protecting
+
+| Asset                                    | Why it matters                                                          | Where it lives                           |
+| ---------------------------------------- | ----------------------------------------------------------------------- | ---------------------------------------- |
+| Bank transactions (since 1 Jan 2026)     | Shows how I live. Account numbers are never stored                      | Postgres on the mini PC                  |
+| Notes and diary entries                  | Private writing. Embedded locally and never sent anywhere               | Notes folder and Postgres on the mini PC |
+| Secrets: Akahu, Anthropic, Telegram, MCP | Each one is a way into the data, or a bill                              | `.env` on the mini PC, mode 600          |
+| The Telegram chat                        | Where answers and alerts arrive. It sees totals and note titles         | Telegram's servers and my phone          |
+| Availability of the jobs                 | A sync, backup or briefing that stops silently is a failure I won't see | The mini PC and its Docker services      |
+
+## Where data crosses a boundary
+
+| From the mini PC to            | What is sent                                                                     | Control                                                       |
+| ------------------------------ | -------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| Claude API                     | Masked descriptions and amounts, then weekly aggregates                          | Masking, a closed category list, a test on the digest (ADR 5) |
+| Telegram                       | The briefing, the diary message, the weekly summary, my commands and the answers | One allowlisted chat, no transaction lines or note text       |
+| Open-Meteo                     | Latitude and longitude, suburb level                                             | Fixed query fields, checked by a test                         |
+| Healthchecks.io                | An empty request every 5 minutes                                                 | No body, and the URL is treated as a secret (ADR 8)           |
+| GitHub (read only)             | A request for one public file                                                    | Fixed URL, timeout, size cap, parsed and never run (ADR 9)    |
+| Claude Code on my laptop (LAN) | Whatever the MCP tools return                                                    | Bearer token, Host allowlist, LAN-only firewall rule (ADR 3)  |
+
+## Risk register
+
+| ID  | Risk                                                                                                   | L      | I      | Controls in place                                                                                                                                                                                             | Residual | Decision                                                                                                      |
+| --- | ------------------------------------------------------------------------------------------------------ | ------ | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------- |
+| R1  | Someone on my LAN uses or captures the MCP bearer token, which crosses the LAN as plain HTTP           | Low    | High   | Token is hashed and compared in constant time. Several tokens allowed so one can be rotated. Host header allowlist. Only SSH and port 3000 answer from another machine, checked by scan                       | Medium   | Accepted for now. TLS or a Tailscale-only bind is on the ideas list                                           |
+| R2  | Text written by whoever pays me steers Claude into a harmful tool call (prompt injection)              | Medium | Low    | The only tools that change data set categories: no deletes, nothing sent out, every change logged and reversible. Category validated twice. Claude Code asks before running a tool                            | Low      | Accepted                                                                                                      |
+| R3  | Bank or note data reaches a third party that should not have it                                        | Low    | High   | Account numbers never parsed or stored. Digits masked, card digits behind the bank's mask masked. Aggregates only for the summary. Notes embedded locally. A test serialises the digest                       | Low      | Accepted. Person-to-person payee names are still sent as written                                              |
+| R4  | A secret leaks through git, a log or an error message                                                  | Low    | High   | gitleaks as a pre-commit hook and in CI. Logger redacts secret keys. Config errors name the variable, never the value. Telegram and ping errors never carry the URL. `.env` is mode 600, tokens revocable     | Low      | Accepted                                                                                                      |
+| R5  | The Telegram bot token is stolen                                                                       | Low    | Medium | Held only in `.env`. Revocable at once through BotFather. The allowlist still limits what the bot answers to my chat and sender id                                                                            | Low      | Accepted. Whoever holds the token can read messages sent to the bot                                           |
+| R6  | A stranger finds the bot and sends commands                                                            | Medium | Low    | Private chat, chat id and sender id must all match. Everyone else is ignored with no reply. 10 messages a minute. Fixed read-only commands with validated arguments. Proved live                              | Low      | Accepted                                                                                                      |
+| R7  | The mini PC is stolen or the host is broken into                                                       | Low    | High   | Firewall allows SSH from the LAN only plus the MCP port. fail2ban. SSH hardening drop-in. Unattended upgrades include Ubuntu's security pocket. Unneeded services disabled. Containers non-root and read-only | Medium   | Accepted: no disk encryption (needs a reinstall) and SSH password login stays on. Revisit at the next rebuild |
+| R8  | Data is lost to a dead disk or a bad deploy                                                            | Low    | High   | Nightly `pg_dump` kept for 14 days, a restore into a scratch database to prove a dump works. A failed dump exits so it shows                                                                                  | Medium   | Accepted for now. The dumps share the disk, so off-box backups are the fix                                    |
+| R9  | A job stops working and I do not notice                                                                | Medium | Medium | Heartbeats for six jobs, `/status`, and a watchdog that alerts once per incident. A failing parse of the diary file is an error, not a quiet day (ADR 8, ADR 9)                                               | Low      | Accepted                                                                                                      |
+| R10 | The bot, its database connection, the watchdog or Telegram is down, so nothing alerts me               | Low    | Medium | An outside check: the bot pings Healthchecks.io after each good check, and it emails me when the pings stop. No ping when the check itself fails. Proved by stopping the bot                                  | Low      | Accepted. If Healthchecks and the box fail together, nothing alerts me                                        |
+| R11 | The Healthchecks ping URL leaks, so someone can send pings and hide an outage                          | Low    | Medium | Treated as a secret: `.env` mode 600, `https` only, never logged or put in an error. Replaceable by making a new check                                                                                        | Low      | Accepted                                                                                                      |
+| R12 | The diary file on GitHub is changed by someone else, or the fetch returns something unexpected         | Low    | Low    | Fixed URL, 15 second timeout, 2 MB cap. The file is parsed, never run. The message goes to my chat only. A file with no entries raises an alert                                                               | Low      | Accepted. A taken-over GitHub account could put words in a message                                            |
+| R13 | A dependency or base image is compromised                                                              | Low    | High   | CI actions pinned by commit SHA. Images pinned by digest. A lockfile. gitleaks in CI                                                                                                                          | Medium   | **Gap:** no automated dependency vulnerability scanning is set up                                             |
+| R14 | The Claude API key expires or the spend limit is hit                                                   | Medium | Low    | The key is Console-billed on prepaid credit and expires on 1 January 2027. Syncing and rules keep working, new transactions stay uncategorised, and the weekly summary falls back to plain numbers            | Low      | Accepted. I still need to confirm the Console spend limit                                                     |
+| R15 | A forgotten credential or exposure outside the box: the old Azure DevOps agent and its token, and IPv6 | Low    | Medium | The agent's service is disabled and its folder is deleted. A scan from another machine shows only two ports                                                                                                   | Medium   | **Open:** remove the offline agent and revoke its token, and check router IPv6                                |
+| R16 | The numbers are wrong, such as a missing closed account or a miscategorised charge                     | Medium | Low    | Plain heuristics with fixed thresholds. My rules override the model. The README names the closed-account gap                                                                                                  | Low      | Accepted                                                                                                      |
+| R17 | The mini PC's address changes and the MCP connection breaks                                            | Medium | Low    | None yet                                                                                                                                                                                                      | Low      | **Open:** reserve .18 in the router's DHCP table                                                              |
+
+## Accepted risks, in one place
+
+- The MCP server speaks plain HTTP on my home network (R1).
+- The disk is not encrypted, and SSH password login is left on behind the LAN-only rule and fail2ban (R7).
+- Backups share the database's disk (R8).
+- Person-to-person payee names reach the model as written (R3).
+- If Healthchecks and the mini PC fail together, nothing alerts me (R10).
+- The diary message trusts whatever is on `main` of my public portfolio repo (R12).
+
+## Open items
+
+| Item                                                                | Risk | Who |
+| ------------------------------------------------------------------- | ---- | --- |
+| Add dependency vulnerability scanning (Dependabot or an audit step) | R13  | Me  |
+| Confirm the Anthropic Console spend limit                           | R14  | Me  |
+| Remove the offline Azure DevOps agent and revoke its token          | R15  | Me  |
+| Check router IPv6 forwarding                                        | R15  | Me  |
+| Reserve .18 in the router's DHCP table                              | R17  | Me  |
+| Off-box encrypted backups                                           | R8   | Me  |
+| TLS or a Tailscale-only bind for the MCP server                     | R1   | Me  |
+
+## What would change this assessment
+
+- A free-text bot answered by a model would raise R2 sharply, because a model would act on text others wrote with nobody to approve each call. It would need read-only tools and a daily cap first.
+- Syncing my notes from my laptop would add a new way into the notes folder.
+- Anything that lets a second person use the system would need real user accounts instead of one shared token.

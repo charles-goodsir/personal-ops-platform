@@ -31,3 +31,27 @@ Every job (finance sync, notes scan, backup, briefing, summary) retried quietly 
 - A job that has never run does not alert, so a service that fails on its first start stays quiet until it succeeds once. The briefing and summary have no row until their first run.
 - The real fix for the first two is a check from outside the mini PC, such as a dead-man's switch that alerts when a ping stops arriving. It is in `IDEAS.md`.
 - I proved it live by backdating the notes scan heartbeat by 20 hours. The alert arrived about 90 seconds later, and "working again" arrived after the next real rescan.
+
+## Update: an outside check for the watchdog
+
+The first two consequences above were the real gap: the watchdog lives in the `bot` service and sends through Telegram, so if either is down, nothing alerts me. A monitor on the same box shares the failures it is meant to catch.
+
+### Decision
+
+- The `bot` service pings a Healthchecks.io check after each watchdog check that worked. The check expects a ping every 5 minutes, with 10 minutes of grace, and emails me when the pings stop. Email is the channel because Telegram may be the thing that is down.
+- No ping is sent when the watchdog's own check fails, for example because the database is unreachable. A watchdog that cannot read the heartbeats is not working, and silence is what I want Healthchecks to see.
+- A failed ping is only logged. A dead Healthchecks must never stop the real alerts.
+- The ping is a plain GET with a 10 second timeout and no body. Its URL carries a random id that is the only secret, so it lives in `.env` (`HEALTHCHECK_PING_URL`, mode 600), must be `https`, and never appears in an error or a log line. The setting is optional: unset, nothing pings.
+
+### Alternatives I did not take
+
+- Uptime Kuma. It is self-hosted, so it has to run off the mini PC, and I have no second machine for it.
+- My own Cloudflare Worker with a cron. It works, but I would be writing the alert logic myself (one alert per incident, recovery, grace), which is the part a hosted product has already had years of use on. I would take this for the learning, not for the safety, and keep Healthchecks running beside it.
+
+### Consequences
+
+- Healthchecks sees that my home IP pings every 5 minutes, so it can tell when the box is up. It receives no data, job names or message text.
+- Anyone who learns the URL id can send pings and hide an outage. That is why it is treated like a token.
+- A ping proves the bot service, its database connection and the watchdog loop are alive. It does not prove Telegram works, and it does not say which job is stale. The watchdog still does that.
+- If Healthchecks is down at the same time as the box, nothing alerts me. I accept that.
+- I proved it by stopping the `bot` service on the mini PC and waiting. The check went down and the email arrived.
