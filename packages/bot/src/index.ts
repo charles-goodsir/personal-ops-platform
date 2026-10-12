@@ -5,3 +5,4 @@ export {
   type Handler,
   type Update,
 } from "./poller.js";
+export { createCommandHandler } from "./commands.js";

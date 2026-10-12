@@ -38,3 +38,8 @@ export {
   type TxFilters,
   type TxRow,
 } from "./read.js";
+export {
+  formatCategorySpending,
+  formatSpending,
+  formatSubscriptions,
+} from "./format.js";
