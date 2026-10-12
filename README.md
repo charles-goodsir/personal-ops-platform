@@ -211,3 +211,4 @@ The [risk assessment](RISK_ASSESSMENT.md) lists what I am protecting, what could
 - The first index runs on CPU: 102 notes took about 25 minutes. Later scans skip unchanged files.
 - Deleting the last note leaves it in the index. An empty folder looks like a missing mount, so the scan keeps the index rather than wiping it.
 - Scanned PDFs with no text layer aren't indexed (no OCR).
+- A note over 20 MB is skipped, links in the notes folder are never followed, and a path that leaves the folder is refused.

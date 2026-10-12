@@ -1,6 +1,10 @@
 import { z } from "zod";
 
 const BASE_URL = "https://api.akahu.io/v1/";
+const REQUEST_TIMEOUT_MS = 30_000;
+// 100 a page, so this is 50,000 transactions: far more than I have. A response
+// that never ends must stop here, not fill the memory.
+const MAX_PAGES = 500;
 
 // Only the fields we use. formatted_account (the account number) and
 // meta.holder (my name) are deliberately not parsed, so they can't be stored.
@@ -62,12 +66,19 @@ export function createAkahuClient(opts: {
   ): Promise<unknown> {
     const url = new URL(path, opts.baseUrl ?? BASE_URL);
     for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
-    const res = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${opts.userToken}`,
-        "X-Akahu-Id": opts.appToken,
-      },
-    });
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${opts.userToken}`,
+          "X-Akahu-Id": opts.appToken,
+        },
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      });
+    } catch {
+      // Nothing from the original error is passed on: it could carry a header.
+      throw new Error(`Akahu ${path} failed: no response`);
+    }
     const body: unknown = await res.json().catch(() => undefined);
     if (!res.ok) {
       // Akahu errors are { success: false, message }. Never include headers.
@@ -93,7 +104,17 @@ export function createAkahuClient(opts: {
       const range = { start: start.toISOString(), end: end.toISOString() };
       const all: AkahuTransaction[] = [];
       let cursor: string | null = null;
+      const seen = new Set<string>();
       do {
+        if (seen.size >= MAX_PAGES) {
+          throw new Error("Akahu transactions failed: too many pages");
+        }
+        if (cursor) {
+          if (seen.has(cursor)) {
+            throw new Error("Akahu transactions failed: cursor repeated");
+          }
+          seen.add(cursor);
+        }
         const page = transactionsPage.parse(
           await get("transactions", cursor ? { ...range, cursor } : range),
         );

@@ -41,6 +41,8 @@ export type TxFilters = {
   limit: number;
 };
 
+const MAX_DESCRIPTION = 300;
+
 const money = (n: unknown) => Math.round(Number(n ?? 0) * 100) / 100;
 
 // The read side of finance: what the MCP tools and the weekly summary call.
@@ -153,7 +155,9 @@ export function createFinanceApi(db: Db) {
       );
       return rows.map((r) => ({
         ...r,
-        description: maskDigits(r.description),
+        // Capped: a bank's description is short, and a huge one would flood the
+        // output.
+        description: maskDigits(r.description).slice(0, MAX_DESCRIPTION),
         amount: money(r.amount),
       }));
     },
