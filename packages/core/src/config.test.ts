@@ -29,3 +29,17 @@ test("error message never contains the bad value", () => {
     }),
   );
 });
+
+test("the healthcheck url is optional, empty counts as unset, and must be https", () => {
+  expect(loadConfig(valid).HEALTHCHECK_PING_URL).toBeUndefined();
+  expect(
+    loadConfig({ ...valid, HEALTHCHECK_PING_URL: "" }).HEALTHCHECK_PING_URL,
+  ).toBeUndefined();
+  const url = "https://hc-ping.com/abc";
+  expect(
+    loadConfig({ ...valid, HEALTHCHECK_PING_URL: url }).HEALTHCHECK_PING_URL,
+  ).toBe(url);
+  expect(() =>
+    loadConfig({ ...valid, HEALTHCHECK_PING_URL: "http://hc-ping.com/abc" }),
+  ).toThrow(/HEALTHCHECK_PING_URL/);
+});

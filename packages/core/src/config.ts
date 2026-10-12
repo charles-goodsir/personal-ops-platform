@@ -11,6 +11,11 @@ const schema = z.object({
   OLLAMA_URL: z.url({ protocol: /^https?$/ }).default("http://localhost:11434"),
   EMBED_MODEL: z.string().min(1).default("nomic-embed-text"),
   NOTES_DIR: z.string().min(1).default("./notes"),
+  // Optional dead-man's switch. Compose passes an unset variable as "".
+  HEALTHCHECK_PING_URL: z.preprocess(
+    (v) => (v === "" ? undefined : v),
+    z.url({ protocol: /^https$/ }).optional(),
+  ),
 });
 
 export type Config = z.infer<typeof schema>;

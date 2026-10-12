@@ -24,11 +24,15 @@ const CHECK_MS = 5 * 60 * 1000;
 // once per incident, then once more when it works again. Messages carry the job
 // and the age only: no error text, which could hold a URL or a key. A job that
 // has never reported is not alerted on, so a first deploy stays quiet. If the
-// bot itself is down nothing alerts: restart: unless-stopped is the cover.
+// bot itself is down nothing alerts here, so after each check that worked it
+// pings an outside dead-man's switch, which does the alerting if the pings stop.
+// No ping when the check itself fails (the database is down, say), and a failed
+// ping is only logged: it must never stop the checks.
 export function createWatchdog(opts: {
   db: Db;
   send: (text: string) => Promise<void>;
   logger: Pick<Logger, "warn">;
+  ping?: () => Promise<void>;
   now?: () => Date;
   intervalMs?: number;
 }) {
@@ -61,6 +65,9 @@ export function createWatchdog(opts: {
     while (!signal.aborted) {
       try {
         await check();
+        await opts.ping?.().catch((err: unknown) => {
+          logger.warn({ err }, "healthcheck ping failed");
+        });
       } catch (err) {
         logger.warn({ err }, "watchdog check failed");
       }
