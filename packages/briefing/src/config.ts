@@ -8,7 +8,7 @@ const schema = z.object({
   BRIEFING_TIME: z
     .string()
     .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
-    .default("07:00"),
+    .default("08:30"),
   WEATHER_LAT: z.coerce.number().min(-90).max(90),
   WEATHER_LON: z.coerce.number().min(-180).max(180),
 });

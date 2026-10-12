@@ -40,11 +40,11 @@ const alerted = async (job: Job) =>
 run(
   "a job quiet for too long gets one alert, with its name and age",
   async () => {
-    await recordRun(getDb(), "finance-sync", true, hoursAgo(14));
+    await recordRun(getDb(), "finance-sync", true, hoursAgo(30));
     const { watchdog, send } = setup();
     await watchdog.check();
     expect(send).toHaveBeenCalledExactlyOnceWith(
-      "Finance sync has not succeeded for 14h.",
+      "Finance sync has not succeeded for 30h.",
     );
     expect(await alerted("finance-sync")).toEqual(now);
     await watchdog.check();

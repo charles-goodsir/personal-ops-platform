@@ -159,7 +159,7 @@ test("jobHealth: failing inside the window, late once it runs out, never without
     failures: 2,
   });
   expect(
-    jobHealth("finance-sync", { ...failing, lastSuccess: hoursAgo(20) }, at)
+    jobHealth("finance-sync", { ...failing, lastSuccess: hoursAgo(30) }, at)
       .state,
   ).toBe("late");
   expect(jobHealth("summary", undefined, at)).toEqual({

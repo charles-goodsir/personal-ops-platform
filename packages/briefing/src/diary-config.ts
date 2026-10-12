@@ -8,7 +8,7 @@ const schema = z.object({
   DIARY_TIME: z
     .string()
     .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
-    .default("07:05"),
+    .default("09:00"),
 });
 
 export type DiaryConfig = z.infer<typeof schema>;

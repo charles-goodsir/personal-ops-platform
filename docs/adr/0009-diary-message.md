@@ -8,7 +8,7 @@ My notes are mostly my diary entries, which live in the `cyberDiaryEntries.ts` f
 
 ## Decision
 
-- A `diary` service sends one Telegram message at `DIARY_TIME` (default 07:05 NZ, just after the briefing): the title and `workedOn` bullets of every entry dated yesterday (NZ date). It sends nothing on a day with no entry. `Next:` bullets are left out, because they are plans, not work done. Each entry shows at most 8 bullets.
+- A `diary` service sends one Telegram message at `DIARY_TIME` (default 09:00 NZ, after the briefing): the title and `workedOn` bullets of every entry dated yesterday (NZ date). It sends nothing on a day with no entry. `Next:` bullets are left out, because they are plans, not work done. Each entry shows at most 8 bullets.
 - It reads the entries from the raw file on GitHub. The URL is fixed in code, the request has a 15 second timeout and a 2 MB cap, and no credentials are sent because the repo is public.
 - The file is parsed, never run. The parser relies on Prettier's layout: an entry's own fields sit at four spaces and its bullets at six, so the same names nested deeper (a lab's title) are ignored. A test runs against a copy of the top of the real file, and I checked once that all 90 entries parse.
 - A file that parses to no entries is an error, not a quiet day. The heartbeat then stays old and the watchdog alerts me, instead of every day looking like a day off.

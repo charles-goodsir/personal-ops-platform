@@ -11,6 +11,11 @@ const schema = z.object({
   CLAUDE_BULK_MODEL: z.string().min(1).default("claude-haiku-5-5"),
   // Earliest transaction date to fetch and keep. Akahu stamps a transaction
   // at 23:59 NZ time on its date, so a plain date splits days correctly.
+  // When the daily sync runs, 24-hour NZ time.
+  FINANCE_SYNC_TIME: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
+    .default("08:00"),
   FINANCE_HISTORY_START: z.iso
     .date()
     .default("2026-01-01")

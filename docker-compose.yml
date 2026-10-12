@@ -83,7 +83,7 @@ services:
       db:
         condition: service_healthy
 
-  # Syncs accounts and transactions from Akahu at startup and every 6 hours.
+  # Syncs accounts and transactions from Akahu at startup and daily at FINANCE_SYNC_TIME (NZ).
   finance:
     image: personal-ops:local
     pull_policy: never
@@ -98,6 +98,7 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       CLAUDE_BULK_MODEL: ${CLAUDE_BULK_MODEL:-claude-haiku-5-5}
       FINANCE_HISTORY_START: ${FINANCE_HISTORY_START:-2026-01-01}
+      FINANCE_SYNC_TIME: ${FINANCE_SYNC_TIME:-08:00}
     read_only: true
     security_opt: ["no-new-privileges:true"]
     cap_drop: [ALL]
@@ -140,7 +141,7 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?set in .env}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:?set in .env}
-      BRIEFING_TIME: ${BRIEFING_TIME:-07:00}
+      BRIEFING_TIME: ${BRIEFING_TIME:-08:30}
       WEATHER_LAT: ${WEATHER_LAT:?set in .env}
       WEATHER_LON: ${WEATHER_LON:?set in .env}
     read_only: true
@@ -164,7 +165,7 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?set in .env}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:?set in .env}
-      DIARY_TIME: ${DIARY_TIME:-07:05}
+      DIARY_TIME: ${DIARY_TIME:-09:00}
     read_only: true
     security_opt: ["no-new-privileges:true"]
     cap_drop: [ALL]

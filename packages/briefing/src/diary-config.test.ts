@@ -6,8 +6,8 @@ const env = {
   TELEGRAM_CHAT_ID: "9876",
 };
 
-test("defaults to 07:05, takes a valid time, and rejects a bad one without echoing it", () => {
-  expect(loadDiaryConfig(env).DIARY_TIME).toBe("07:05");
+test("defaults to 09:00, takes a valid time, and rejects a bad one without echoing it", () => {
+  expect(loadDiaryConfig(env).DIARY_TIME).toBe("09:00");
   expect(loadDiaryConfig({ ...env, DIARY_TIME: "06:45" }).DIARY_TIME).toBe(
     "06:45",
   );
