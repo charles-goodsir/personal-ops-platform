@@ -5,10 +5,12 @@ export { createTestDb } from "./test-db.js";
 export { nextRun, type Schedule } from "./schedule.js";
 export { callTelegram, createTelegramSender } from "./telegram.js";
 export {
+  clearAlert,
   JOBS,
   jobHealth,
   MAX_QUIET_MS,
   listJobRuns,
+  markAlerted,
   recordRun,
   trackRun,
   type Job,

@@ -10,6 +10,7 @@ import {
 } from "@ops/finance";
 import type { NotesApi } from "@ops/knowledge-base";
 import { JOBS, jobHealth, type JobRun } from "@ops/core";
+import { ago } from "./format.js";
 import type { Handler } from "./poller.js";
 
 const HELP = `Commands:
@@ -25,13 +26,6 @@ Categories: ${CATEGORIES.join(", ")}`;
 
 const MAX_LENGTH = 100;
 const NOTES_SHOWN = 5;
-
-function ago(ms: number): string {
-  const minutes = Math.max(0, Math.round(ms / 60_000));
-  if (minutes < 60) return `${minutes}m`;
-  const hours = Math.round(minutes / 60);
-  return hours < 48 ? `${hours}h` : `${Math.round(hours / 24)}d`;
-}
 
 // "last month Eating out" -> the period, and what is left over as a category.
 // A period can be written with spaces or underscores.

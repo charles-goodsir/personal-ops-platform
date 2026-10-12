@@ -113,3 +113,20 @@ export function jobHealth(
     return { state: "failing", ageMs, failures: run.consecutiveFailures };
   return { state: "ok", ageMs };
 }
+
+// The watchdog sets this when it alerts, and clears it when it announces the
+// recovery, so each incident produces one alert and one all-clear.
+export async function markAlerted(
+  db: Db,
+  job: Job,
+  at = new Date(),
+): Promise<void> {
+  await db.query("UPDATE job_runs SET alerted_at = $2 WHERE job = $1", [
+    job,
+    at,
+  ]);
+}
+
+export async function clearAlert(db: Db, job: Job): Promise<void> {
+  await db.query("UPDATE job_runs SET alerted_at = NULL WHERE job = $1", [job]);
+}
