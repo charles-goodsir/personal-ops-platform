@@ -4,6 +4,7 @@
 import {
   createDb,
   createLogger,
+  createTelegramSender,
   loadConfig,
   nextRun,
   trackRun,
@@ -12,6 +13,7 @@ import {
 import { syncAccounts } from "./accounts.js";
 import { createAkahuClient } from "./akahu.js";
 import { applyRules, categoriseWithModel } from "./categorise.js";
+import { checkBudgetAlerts } from "./budget-alerts.js";
 import { createClaudeClassifier } from "./claude.js";
 import { loadFinanceConfig } from "./config.js";
 import { syncTransactions } from "./transactions.js";
@@ -34,6 +36,26 @@ const classify = finance.ANTHROPIC_API_KEY
 if (!classify)
   logger.warn("ANTHROPIC_API_KEY not set, skipping model categorisation");
 
+const sendAlert =
+  finance.TELEGRAM_BOT_TOKEN && finance.TELEGRAM_CHAT_ID
+    ? createTelegramSender({
+        token: finance.TELEGRAM_BOT_TOKEN,
+        chatId: finance.TELEGRAM_CHAT_ID,
+      })
+    : undefined;
+if (!sendAlert) logger.warn("Telegram not set, skipping budget alerts");
+
+// A failed alert never fails the sync: the next sync tries again.
+async function alerts() {
+  if (!sendAlert) return;
+  try {
+    const sent = await checkBudgetAlerts(db, sendAlert);
+    if (sent) logger.info({ budgets: sent }, "budget alert sent");
+  } catch {
+    logger.warn("budget alert failed");
+  }
+}
+
 function sync() {
   return trackRun(db, logger, "finance-sync", async () => {
     const accounts = await syncAccounts(db, akahu);
@@ -48,6 +70,9 @@ function sync() {
       { accounts, ...transactions, rules, model },
       "finance sync complete",
     );
+  }).then(async (ok) => {
+    if (ok) await alerts();
+    return ok;
   });
 }
 

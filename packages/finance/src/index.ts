@@ -51,3 +51,4 @@ export {
   type BudgetsApi,
   type BudgetStatus,
 } from "./budgets.js";
+export { checkBudgetAlerts } from "./budget-alerts.js";
