@@ -1,6 +1,6 @@
 # Security testing
 
-Status: **all three batches (A, the MCP HTTP layer; B, the tools; C, the bot, the diary file, notes ingest, logs and parsers) are done.** A8 and A9 are decided in [ADR 10](adr/0010-threat-model-decisions.md). The threats and their IDs come from the [threat model](threat-model.md). This file is where each test is recorded: what I tried, what should have happened, what did, and what I changed.
+Status: **about 200 attack tests (74 on the HTTP layer, 49 on the tools, 76 on the bot, files, logs and parsers, and one on the rules function). All three batches (A, the MCP HTTP layer; B, the tools; C, the bot, the diary file, notes ingest, logs and parsers) are done.** A8 and A9 are decided in [ADR 10](adr/0010-threat-model-decisions.md). The threats and their IDs come from the [threat model](threat-model.md). This file is where each test is recorded: what I tried, what should have happened, what did, and what I changed.
 
 ## Rules
 
@@ -61,7 +61,7 @@ Result is one of: not run, pass, finding fixed, accepted. Each entry gets the PR
 
 ## Batch A: findings and observations
 
-Run on 12 October 2026 against a local copy. 70 tests in [`http.attack.test.ts`](../packages/mcp-server/src/attack/http.attack.test.ts).
+Run on 12 October 2026 against a local copy. 74 tests in [`http.attack.test.ts`](../packages/mcp-server/src/attack/http.attack.test.ts).
 
 ### Finding 1 (A4, A5): the body was read before the token was checked, and errors were HTML
 
@@ -78,6 +78,12 @@ Run on 12 October 2026 against a local copy. 70 tests in [`http.attack.test.ts`]
 - **Why it matters:** the token is the only thing between the LAN and my data. A stranger could guess for as long as they liked and I would never know.
 - **Fix:** a failure writes `mcp auth failed` with a count and the address, never the token or the guess. It writes at most once every 10 seconds, so guessing fast cannot fill the disk.
 - **Retest:** the guesses show up in the log, 300 at once produce fewer than 5 lines, and the right token still works. Removing the log fails the first test, and logging every failure fails the second.
+
+### A8: the audit line, and a test that tested nothing
+
+After I decided in [ADR 10](adr/0010-threat-model-decisions.md) to log one line per authenticated request, four tests went in with it: the tool and the argument names are logged and never the values, a call the schema refuses is still logged, hostile names are cut short and a big batch is capped, and a request refused at the door has no audit line.
+
+My first version of the cap test sent a body over the 100 KB limit, so the server answered 413 and the audit line was never reached. It passed without testing anything, and breaking the cap and the name cut did not fail it. I rewrote it to send a body that gets through, parse the logged line and check the numbers. Breaking the audit line, logging the values, removing the batch cap, the name cut and the argument cap now each fail a test.
 
 ### Observations that are not findings
 
