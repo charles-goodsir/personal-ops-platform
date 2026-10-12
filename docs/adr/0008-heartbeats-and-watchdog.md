@@ -10,7 +10,7 @@ Every job (finance sync, notes scan, backup, briefing, summary) retried quietly 
 
 - A `job_runs` table holds one row per job: the last success time and the last attempt time. Each job records a heartbeat when it finishes. `backup.sh` records its own through `psql`.
 - No error text is stored. A failure leaves the old success time in place, and the job simply gets older.
-- One set of rules decides if a job is healthy: it is stale when its last success is older than `MAX_QUIET_MS` for that job. The limits are 1 hour for the notes scan, 13 hours for the finance sync, 26 hours for the backup and the briefing, and 8 days for the summary. Each is the schedule plus slack.
+- One set of rules decides if a job is healthy: it is stale when its last success is older than `MAX_QUIET_MS` for that job. The limits are 1 hour for the notes scan, 26 hours for the finance sync, the backup and the briefing, and 8 days for the summary. Each is the schedule plus slack.
 - `/status` and the watchdog both use those rules, so they cannot disagree.
 - The watchdog runs inside the `bot` service every 5 minutes. It sends one alert when a job goes stale, then one "working again" when it recovers. Messages carry the job name and its age, nothing else.
 - The alert is sent before it is marked as sent. If Telegram fails, the next check tries again.

@@ -11,6 +11,7 @@ test("accepts tokens with Akahu's prefixes", () => {
     AKAHU_APP_TOKEN: "app_token_x",
     AKAHU_USER_TOKEN: "user_token_y",
     CLAUDE_BULK_MODEL: "claude-haiku-5-5",
+    FINANCE_SYNC_TIME: "08:00",
     FINANCE_HISTORY_START: new Date("2026-01-01T00:00:00Z"),
   });
 });
@@ -76,4 +77,18 @@ test("summary config rejects bad Telegram values without echoing them", () => {
     expect.not.objectContaining({ message: expect.stringContaining("oops") }),
   );
   expect(loadSummaryConfig({ ...summaryEnv, TELEGRAM_CHAT_ID: "-100123" }));
+});
+
+test("takes a valid sync time and rejects a bad one", () => {
+  const tokens = {
+    AKAHU_APP_TOKEN: "app_token_x",
+    AKAHU_USER_TOKEN: "user_token_y",
+  };
+  expect(
+    loadFinanceConfig({ ...tokens, FINANCE_SYNC_TIME: "06:15" })
+      .FINANCE_SYNC_TIME,
+  ).toBe("06:15");
+  expect(() =>
+    loadFinanceConfig({ ...tokens, FINANCE_SYNC_TIME: "8am" }),
+  ).toThrow(/FINANCE_SYNC_TIME/);
 });

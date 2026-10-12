@@ -82,11 +82,11 @@ export async function trackRun(
 const HOUR = 3_600_000;
 
 // How long each job may go without a success before something is wrong. The
-// notes scan runs every 15 minutes, the finance sync every 6 hours, the
-// backup, the briefing and the diary message daily, the summary weekly. Each has slack for one
+// notes scan runs every 15 minutes, the
+// finance sync, backup, briefing and diary message daily, the summary weekly. Each has slack for one
 // missed run.
 export const MAX_QUIET_MS: Record<Job, number> = {
-  "finance-sync": 13 * HOUR,
+  "finance-sync": 26 * HOUR,
   "knowledge-base-scan": 1 * HOUR,
   briefing: 26 * HOUR,
   summary: 8 * 24 * HOUR,

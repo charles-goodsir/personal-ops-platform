@@ -56,10 +56,10 @@ Each module exposes functions from its own package. The MCP server, the briefing
 - Claude connects to the MCP server over streamable HTTP (bearer token) or stdio.
 - My notes folder (Markdown, text and PDF) is indexed automatically and kept in sync as files change. Claude can search it and answer from it, citing the file and heading each passage came from.
 - Embeddings run locally with Ollama, so note text never leaves the mini PC.
-- Bank transactions sync from Akahu (NZ open banking) every 6 hours. My own rules categorise them first and Claude Haiku categorises the rest.
+- Bank transactions sync from Akahu (NZ open banking) daily at 08:00 NZ time. My own rules categorise them first and Claude Haiku categorises the rest.
 - Claude can answer questions like "how much did I spend on groceries last month", list my recurring charges, and look up transactions.
-- Every morning at 07:00 NZ time a briefing arrives on Telegram: yesterday's spending and any unusual charge, notes that changed in the last day, and today's weather. A section that fails is skipped and shown as unavailable, and the rest still send.
-- Every morning at 07:05 NZ time a second message lists the previous day's diary entries (title and bullets), and nothing arrives on a day with no entry.
+- Every morning at 08:30 NZ time a briefing arrives on Telegram: yesterday's spending and any unusual charge, notes that changed in the last day, and today's weather. A section that fails is skipped and shown as unavailable, and the rest still send.
+- Every morning at 09:00 NZ time a second message lists the previous day's diary entries (title and bullets), and nothing arrives on a day with no entry.
 - Every Monday at 08:00 NZ time a summary of the week's spending arrives on Telegram as a separate message.
 - I can message the bot from my own Telegram chat and get answers back: spending, subscriptions, matching notes, or the briefing on demand. See [Telegram commands](#telegram-commands).
 
@@ -97,20 +97,20 @@ The commands are read-only and use no model. Arguments must match the period nam
 
 ## Services (Docker Compose)
 
-| Service          | Role                                                                                      |
-| ---------------- | ----------------------------------------------------------------------------------------- |
-| `db`             | Postgres 17 with pgvector. Published on 127.0.0.1 only                                    |
-| `migrate`        | One-shot: runs the SQL migrations, then exits                                             |
-| `ollama`         | Embeddings model server (`nomic-embed-text`). No published port                           |
-| `ollama-pull`    | One-shot: downloads the model into a volume, then exits                                   |
-| `backup`         | Dumps the database at startup and nightly at 03:00 NZ time, keeping 14 days               |
-| `knowledge-base` | Scans the notes folder at startup, watches it for changes, and rescans every 15 minutes   |
-| `finance`        | Syncs accounts and transactions from Akahu at startup and every 6 hours, then categorises |
-| `bot`            | Polls Telegram for my commands and answers them, and runs the watchdog. Outbound only     |
-| `briefing`       | Sends the daily briefing to Telegram at `BRIEFING_TIME` (default 07:00 NZ time)           |
-| `diary`          | Sends yesterday's diary entries to Telegram at `DIARY_TIME` (default 07:05 NZ time)       |
-| `summary`        | Sends the weekly spending summary to Telegram, Monday 08:00 NZ time                       |
-| `mcp-server`     | The MCP server. Published on the address set by `MCP_PUBLISH_ADDR`                        |
+| Service          | Role                                                                                                                             |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `db`             | Postgres 17 with pgvector. Published on 127.0.0.1 only                                                                           |
+| `migrate`        | One-shot: runs the SQL migrations, then exits                                                                                    |
+| `ollama`         | Embeddings model server (`nomic-embed-text`). No published port                                                                  |
+| `ollama-pull`    | One-shot: downloads the model into a volume, then exits                                                                          |
+| `backup`         | Dumps the database at startup and nightly at 03:00 NZ time, keeping 14 days                                                      |
+| `knowledge-base` | Scans the notes folder at startup, watches it for changes, and rescans every 15 minutes                                          |
+| `finance`        | Syncs accounts and transactions from Akahu at startup and daily at `FINANCE_SYNC_TIME` (default 08:00 NZ time), then categorises |
+| `bot`            | Polls Telegram for my commands and answers them, and runs the watchdog. Outbound only                                            |
+| `briefing`       | Sends the daily briefing to Telegram at `BRIEFING_TIME` (default 08:30 NZ time)                                                  |
+| `diary`          | Sends yesterday's diary entries to Telegram at `DIARY_TIME` (default 09:00 NZ time)                                              |
+| `summary`        | Sends the weekly spending summary to Telegram, Monday 08:00 NZ time                                                              |
+| `mcp-server`     | The MCP server. Published on the address set by `MCP_PUBLISH_ADDR`                                                               |
 
 The app services run from one image as a non-root user, with a read-only filesystem, all capabilities dropped and `no-new-privileges`. The notes folder is mounted read-only.
 
@@ -151,7 +151,7 @@ Short records of the choices that shaped the project, with what I rejected and w
 3. Fill in `.env`: a Postgres password, and `MCP_AUTH_TOKENS` (generate one with `openssl rand -hex 32`).
 4. Create the backups folder as your user, `mkdir backups`, so Docker doesn't create it owned by root. Set `NOTES_DIR` to your notes folder. It defaults to `./notes`, which git ignores.
 5. For finance, add the Akahu app and user tokens (my.akahu.nz, personal app). Add an `ANTHROPIC_API_KEY` to categorise with the model. Without one, sync and rules still work and new transactions stay uncategorised.
-6. For the Telegram summary, create a bot with @BotFather, send it a message, and read your chat id from the bot's `getUpdates`. Set `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`. `CLAUDE_SUMMARY_MODEL` defaults to `claude-sonnet-5-5`. The daily briefing and the command bot use the same bot and chat. Only the weekly summary uses a model. Set `WEATHER_LAT` and `WEATHER_LON` (suburb level is enough), and optionally `BRIEFING_TIME` (24-hour NZ time, default 07:00) and `DIARY_TIME` (default 07:05). Optionally create a check at healthchecks.io with a 5 minute period and 10 minute grace, add your email as its alert channel, and set `HEALTHCHECK_PING_URL` to its ping URL.
+6. For the Telegram summary, create a bot with @BotFather, send it a message, and read your chat id from the bot's `getUpdates`. Set `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`. `CLAUDE_SUMMARY_MODEL` defaults to `claude-sonnet-5-5`. The daily briefing and the command bot use the same bot and chat. Only the weekly summary uses a model. Set `WEATHER_LAT` and `WEATHER_LON` (suburb level is enough), and optionally `BRIEFING_TIME` (24-hour NZ time, default 08:30), `DIARY_TIME` (default 09:00) and `FINANCE_SYNC_TIME` (default 08:00). Optionally create a check at healthchecks.io with a 5 minute period and 10 minute grace, add your email as its alert channel, and set `HEALTHCHECK_PING_URL` to its ping URL.
 7. On the mini PC, set `MCP_PUBLISH_ADDR` and `MCP_ALLOWED_HOSTS` to its LAN IP, and allow the port through the firewall.
 8. `docker compose up -d --build`. The first run downloads the model (about 274 MB), indexes every note and syncs transactions from `FINANCE_HISTORY_START`.
 9. Add the server to Claude Code: `claude mcp add --scope user --transport http personal-ops-lan http://<host>:3000/mcp --header "Authorization: Bearer <token>"`

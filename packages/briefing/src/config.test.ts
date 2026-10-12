@@ -8,9 +8,9 @@ const env = {
   WEATHER_LON: "174.82",
 };
 
-test("defaults the time to 07:00 and reads the coordinates as numbers", () => {
+test("defaults the time to 08:30 and reads the coordinates as numbers", () => {
   expect(loadBriefingConfig(env)).toMatchObject({
-    BRIEFING_TIME: "07:00",
+    BRIEFING_TIME: "08:30",
     WEATHER_LAT: -36.97,
     WEATHER_LON: 174.82,
   });

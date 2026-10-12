@@ -11,7 +11,7 @@ I want one short message each morning with yesterday's spending, notes that chan
 - A section is a name and a function returning text, or nothing when it has nothing to say. The runner builds all sections at once, each with a 15 second timeout, and joins them under a dated header.
 - A section that throws or hangs shows as `<name>: unavailable` and the rest still send. The error goes to the log, never into the message. If every section fails the message says so.
 - The sections are plain code: finance reads the existing spending API, notes lists titles from a new `notesChangedSince` function, and weather asks Open-Meteo for a one-day forecast. Only the coordinates leave the box.
-- It runs at `BRIEFING_TIME` (NZ, default 07:00). A failed send is retried an hour later, not at the next day's time, so one bad night does not skip a day.
+- It runs at `BRIEFING_TIME` (NZ, default 08:30). A failed send is retried an hour later, not at the next day's time, so one bad night does not skip a day.
 - The weekly summary stays a separate message on Monday at 08:00, written by Sonnet from aggregates. On Mondays there are two messages.
 
 ## Alternatives I did not take

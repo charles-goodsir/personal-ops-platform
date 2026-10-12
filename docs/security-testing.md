@@ -200,7 +200,7 @@ Run on 12 October 2026. 76 tests across five files: `attack.test.ts` in the bot,
 
 - **What happened:** the transaction pages are followed until the cursor ends. A response that never ended made my test process run out of memory and abort.
 - **Fix:** at most 500 pages, and a repeated cursor stops it. Each request has a 30 second deadline, and a failed request does not pass on the original error.
-- **Not tested:** a real Akahu outage. The effect today would have been a sync that never finished, which the watchdog would have caught after 13 hours.
+- **Not tested:** a real Akahu outage. The effect today would have been a sync that never finished, which the watchdog would have caught after 26 hours.
 
 ### Finding 16 (C8): a giant description reached the tool output whole
 
