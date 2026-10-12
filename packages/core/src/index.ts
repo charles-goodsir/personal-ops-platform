@@ -8,6 +8,7 @@ export {
   JOBS,
   listJobRuns,
   recordRun,
+  trackRun,
   type Job,
   type JobRun,
 } from "./job-runs.js";

@@ -1,5 +1,5 @@
 // Long-running: scans NOTES_DIR at startup, then watches it for changes.
-import { createDb, createLogger, loadConfig } from "@ops/core";
+import { createDb, createLogger, loadConfig, trackRun } from "@ops/core";
 import { createEmbedder } from "./embed.js";
 import { createIngester } from "./ingest.js";
 import { createQueue, watchNotes } from "./watch.js";
@@ -18,15 +18,17 @@ const ingester = createIngester({
   logger,
 });
 const queue = createQueue(logger);
+const scan = () =>
+  trackRun(db, logger, "knowledge-base-scan", ingester.scan).then(() => {});
 
-void queue.enqueue(ingester.scan);
+void queue.enqueue(scan);
 const watcher = watchNotes({
   notesDir: config.NOTES_DIR,
   ingester,
   enqueue: queue.enqueue,
   logger,
 });
-const rescan = setInterval(() => void queue.enqueue(ingester.scan), RESCAN_MS);
+const rescan = setInterval(() => void queue.enqueue(scan), RESCAN_MS);
 logger.info({ notesDir: config.NOTES_DIR }, "watching notes");
 
 const shutdown = () => {

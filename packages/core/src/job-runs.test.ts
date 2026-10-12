@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, expect, test } from "vitest";
 import type { Db } from "./db.js";
-import { listJobRuns, recordRun } from "./job-runs.js";
+import { vi } from "vitest";
+import { listJobRuns, recordRun, trackRun } from "./job-runs.js";
 import { createTestDb } from "./test-db.js";
 
 let testDb: Awaited<ReturnType<typeof createTestDb>>;
@@ -78,4 +79,43 @@ run("each job has its own row", async () => {
     "briefing",
     "finance-sync",
   ]);
+});
+
+const logger = () => ({ error: vi.fn(), warn: vi.fn() });
+
+run("trackRun records a success and returns true", async () => {
+  const log = logger();
+  expect(await trackRun(getDb(), log, "summary", async () => {})).toBe(true);
+  const row = (await listJobRuns(getDb())).find((r) => r.job === "summary");
+  expect(row?.lastSuccess).toBeInstanceOf(Date);
+  expect(log.error).not.toHaveBeenCalled();
+});
+
+run("trackRun records a failure, logs it, and does not throw", async () => {
+  const log = logger();
+  const ok = await trackRun(getDb(), log, "knowledge-base-scan", async () => {
+    throw new Error("ollama down");
+  });
+  expect(ok).toBe(false);
+  expect(log.error).toHaveBeenCalledOnce();
+  const row = (await listJobRuns(getDb())).find(
+    (r) => r.job === "knowledge-base-scan",
+  );
+  expect(row).toMatchObject({ consecutiveFailures: 1, lastSuccess: null });
+});
+
+test("trackRun keeps the job's result when the heartbeat can't be written", async () => {
+  const log = logger();
+  const brokenDb = {
+    query: async () => {
+      throw new Error("database is down");
+    },
+  } as unknown as Db;
+  expect(await trackRun(brokenDb, log, "briefing", async () => {})).toBe(true);
+  expect(
+    await trackRun(brokenDb, log, "briefing", async () => {
+      throw new Error("send failed");
+    }),
+  ).toBe(false);
+  expect(log.warn).toHaveBeenCalledTimes(2);
 });

@@ -6,6 +6,7 @@ import {
   createTelegramSender,
   loadConfig,
   nextRun,
+  trackRun,
   type Schedule,
 } from "@ops/core";
 import { loadSummaryConfig } from "./config.js";
@@ -31,16 +32,11 @@ const summarise = summary.ANTHROPIC_API_KEY
 if (!summarise)
   logger.warn("ANTHROPIC_API_KEY not set, summary will be plain numbers");
 
-async function run() {
-  try {
+const run = () =>
+  trackRun(db, logger, "summary", async () => {
     await sendWeeklySummary({ db, send, summarise, logger });
     logger.info("weekly summary sent");
-    return true;
-  } catch (err) {
-    logger.error({ err }, "weekly summary failed");
-    return false;
-  }
-}
+  });
 
 if (process.argv.includes("--once")) {
   const ok = await run();

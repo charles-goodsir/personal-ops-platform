@@ -6,6 +6,7 @@ import {
   createTelegramSender,
   loadConfig,
   nextRun,
+  trackRun,
   type Schedule,
 } from "@ops/core";
 import { loadBriefingConfig } from "./config.js";
@@ -31,16 +32,11 @@ const sections = [
 ];
 const DAILY: Schedule = { time: briefing.BRIEFING_TIME };
 
-async function run() {
-  try {
+const run = () =>
+  trackRun(db, logger, "briefing", async () => {
     await send(await runBriefing(sections, { logger }));
     logger.info("daily briefing sent");
-    return true;
-  } catch (err) {
-    logger.error({ err }, "daily briefing failed");
-    return false;
-  }
-}
+  });
 
 if (process.argv.includes("--once")) {
   const ok = await run();
