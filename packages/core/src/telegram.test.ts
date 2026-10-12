@@ -16,7 +16,7 @@ test("posts plain text to the chat, errors never carry the token", async () => {
   });
   const err = await send("hi").catch((e: Error) => e);
   expect(err).toMatchObject({
-    message: "telegram send failed: 400 chat not found",
+    message: "telegram sendMessage failed: 400 chat not found",
   });
   const [url, init] = fetchFn.mock.calls[0] as unknown as [string, RequestInit];
   expect(url).toContain("/sendMessage");
