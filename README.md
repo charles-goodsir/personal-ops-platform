@@ -1,6 +1,6 @@
 # Personal Ops Platform
 
-A self-hosted personal platform on my home mini PC. It has a shared Postgres + pgvector data layer and an MCP server, so Claude can search my notes and query my finances, and a Telegram bot sends me a daily briefing and a weekly spending summary.
+A self-hosted personal platform on my home mini PC. It has a shared Postgres + pgvector data layer and an MCP server, so Claude can search my notes and query my finances, and a Telegram bot sends me a daily briefing and a weekly spending summary, and answers a few commands.
 
 Status: Phases 1 to 4 complete (foundation, knowledge base, finance agent, daily briefing). Next is Phase 5, polish. See [docs/brief.md](docs/brief.md) for the full plan.
 
@@ -23,6 +23,7 @@ flowchart LR
     brief["briefing"]
     sum["summary"]
     backup["backup (nightly pg_dump)"]
+    bot["bot (commands)"]
     notes[/"Notes folder"/]
   end
   akahu["Akahu (bank data)"] --> fin
@@ -38,7 +39,9 @@ flowchart LR
   sum -- "aggregates only" --> api
   weather["Open-Meteo"] -- "coordinates only" --> brief
   mcp -- "bearer token, LAN" --> claude["Claude Code"]
-  brief --> tg["Telegram"]
+  db --> bot
+  bot <-- "polls and replies" --> tg["Telegram"]
+  brief --> tg
   sum --> tg
 ```
 
@@ -53,6 +56,7 @@ Each module exposes functions from its own package. The MCP server, the briefing
 - Claude can answer questions like "how much did I spend on groceries last month", list my recurring charges, and look up transactions.
 - Every morning at 07:00 NZ time a briefing arrives on Telegram: yesterday's spending and any unusual charge, notes that changed in the last day, and today's weather. A section that fails is skipped and shown as unavailable, and the rest still send.
 - Every Monday at 08:00 NZ time a summary of the week's spending arrives on Telegram as a second message.
+- I can message the bot from my own Telegram chat and get answers back: spending, subscriptions, matching notes, or the briefing on demand. See [Telegram commands](#telegram-commands).
 
 ## MCP tools
 
@@ -71,6 +75,20 @@ Each module exposes functions from its own package. The MCP server, the briefing
 
 Only the two rule-editing tools change data, and they can only change categories: no deletes, nothing sent anywhere, every change logged and reversible. That limit matters because transaction descriptions are partly written by whoever pays me, so text Claude reads from them is untrusted.
 
+## Telegram commands
+
+Send these to the bot from my own private chat. Every other chat is ignored with no reply.
+
+| Command                      | What it does                                                            |
+| ---------------------------- | ----------------------------------------------------------------------- |
+| `/spend [period] [category]` | Spending by category, default this month. `/spend last month groceries` |
+| `/subs [all]`                | Active recurring charges, or all of them                                |
+| `/notes <words>`             | Titles and paths of matching notes. Never note text                     |
+| `/briefing`                  | Sends the daily briefing now                                            |
+| `/help`                      | Lists the commands, periods and categories                              |
+
+The commands are read-only and use no model. Arguments must match the period names and the category list, and nothing is passed on as free text. See [the ADR](docs/adr/0007-telegram-command-bot.md) for the allowlist, the rate limit and what I left out.
+
 ## Services (Docker Compose)
 
 | Service          | Role                                                                                      |
@@ -82,6 +100,7 @@ Only the two rule-editing tools change data, and they can only change categories
 | `backup`         | Dumps the database at startup and nightly at 03:00 NZ time, keeping 14 days               |
 | `knowledge-base` | Scans the notes folder at startup, watches it for changes, and rescans every 15 minutes   |
 | `finance`        | Syncs accounts and transactions from Akahu at startup and every 6 hours, then categorises |
+| `bot`            | Polls Telegram for my commands and answers them. Outbound calls only, no published port   |
 | `briefing`       | Sends the daily briefing to Telegram at `BRIEFING_TIME` (default 07:00 NZ time)           |
 | `summary`        | Sends the weekly spending summary to Telegram, Monday 08:00 NZ time                       |
 | `mcp-server`     | The MCP server. Published on the address set by `MCP_PUBLISH_ADDR`                        |
@@ -96,6 +115,7 @@ The app services run from one image as a non-root user, with a read-only filesys
 | Transactions, for categorisation            | Claude API (Haiku)            | Masked description, amount, type, and Akahu's merchant and category names. No account numbers or account names                              |
 | Weekly summary                              | Claude API (Sonnet), Telegram | Totals, category sums, and a few payee names with digits masked. No transaction rows or descriptions. The finished message goes to Telegram |
 | Weather                                     | Open-Meteo                    | Latitude and longitude only (suburb level). No key, no account                                                                              |
+| Telegram commands                           | Telegram                      | My question, and the answer: totals, subscription lines, and note titles and paths. No transaction lines or note text                       |
 | Anything Claude reads through the MCP tools | The Claude chat I'm using     | What the tool returns, with digits masked in descriptions                                                                                   |
 
 Account numbers and holder names are kept out by construction: the Akahu parser never reads them, and the table has no column for them. The `meta` block is not parsed at all, because it carries other people's account numbers.
@@ -110,6 +130,7 @@ Short records of the choices that shaped the project, with what I rejected and w
 4. [Data model: versioned vectors, and transactions that follow the source](docs/adr/0004-data-model.md)
 5. [What leaves the box: masking, aggregates and a small write surface](docs/adr/0005-finance-privacy.md)
 6. [A daily briefing built from plain code, and a separate weekly summary](docs/adr/0006-briefing-without-a-model.md)
+7. [A Telegram bot that answers fixed commands, for me only](docs/adr/0007-telegram-command-bot.md)
 
 ## Setup
 
@@ -118,7 +139,7 @@ Short records of the choices that shaped the project, with what I rejected and w
 3. Fill in `.env`: a Postgres password, and `MCP_AUTH_TOKENS` (generate one with `openssl rand -hex 32`).
 4. Create the backups folder as your user, `mkdir backups`, so Docker doesn't create it owned by root. Set `NOTES_DIR` to your notes folder. It defaults to `./notes`, which git ignores.
 5. For finance, add the Akahu app and user tokens (my.akahu.nz, personal app). Add an `ANTHROPIC_API_KEY` to categorise with the model. Without one, sync and rules still work and new transactions stay uncategorised.
-6. For the Telegram summary, create a bot with @BotFather, send it a message, and read your chat id from the bot's `getUpdates`. Set `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`. `CLAUDE_SUMMARY_MODEL` defaults to `claude-sonnet-5-5`. The daily briefing uses the same bot and chat, and no model. Set `WEATHER_LAT` and `WEATHER_LON` (suburb level is enough), and optionally `BRIEFING_TIME` (24-hour NZ time, default 07:00).
+6. For the Telegram summary, create a bot with @BotFather, send it a message, and read your chat id from the bot's `getUpdates`. Set `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`. `CLAUDE_SUMMARY_MODEL` defaults to `claude-sonnet-5-5`. The daily briefing and the command bot use the same bot and chat. Only the weekly summary uses a model. Set `WEATHER_LAT` and `WEATHER_LON` (suburb level is enough), and optionally `BRIEFING_TIME` (24-hour NZ time, default 07:00).
 7. On the mini PC, set `MCP_PUBLISH_ADDR` and `MCP_ALLOWED_HOSTS` to its LAN IP, and allow the port through the firewall.
 8. `docker compose up -d --build`. The first run downloads the model (about 274 MB), indexes every note and syncs transactions from `FINANCE_HISTORY_START`.
 9. Add the server to Claude Code: `claude mcp add --scope user --transport http personal-ops-lan http://<host>:3000/mcp --header "Authorization: Bearer <token>"`
@@ -150,6 +171,7 @@ The backups sit on the same disk as the database, so they cover mistakes and cor
 - CI pulls its Postgres image from a GHCR copy (same digest as Docker Hub's), because Docker Hub rate-limited and timed out on GitHub's runners.
 - Descriptions are masked before they leave the box: runs of 6 or more digits become `[number]`, and anything after the bank's own run of asterisks becomes `[card]`. A test checks the weekly summary's digest contains no account name, card number or description text.
 - The category list is a real `enum` in the JSON schema sent to the API. The SDK's zod helper turned it into a description, so the schema is written by hand and a test checks the MCP tools carry the enum too.
+- The command bot answers only my private chat (chat id and sender id must both match), ignores everyone else without replying, handles at most 10 messages a minute, and runs fixed read-only commands with validated arguments. I proved the allowlist live by running a copy with a wrong chat id and getting no reply.
 - Config errors name the variable and never print its value, including the Telegram token and chat id. Telegram send errors carry Telegram's description only, because the request URL contains the token.
 
 ## Known limits
@@ -163,6 +185,7 @@ The backups sit on the same disk as the database, so they cover mistakes and cor
 - The briefing's notes section reports file modification time, so it can't tell a new note from an edited one. Its finance section can look light if Akahu's daily refresh is late.
 - A section that times out keeps running in the background until it finishes. None of the current sections hold a connection open.
 - On Mondays the briefing and the weekly summary arrive as two separate messages.
+- The bot token is the real secret for the command bot: whoever holds it can read my messages to it. Telegram sees my questions and the answers, and messages sent while the bot is down are answered when it restarts. Only one copy can poll at a time.
 - Traffic between Claude and the mini PC is plain HTTP on the home LAN. TLS or a Tailscale-only bind would be the production fix.
 - The mini PC has no disk encryption. Encrypting an existing root disk means a reinstall, and the realistic threat is someone taking a home PC. I accepted that: the Akahu and API tokens can be revoked, `.env` is readable only by its owner, and the backups sit on the same disk. Revisit when the box is next rebuilt.
 - SSH password login is left on, restricted to the LAN by the firewall and watched by fail2ban.
