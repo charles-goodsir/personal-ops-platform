@@ -20,6 +20,7 @@ flowchart LR
     ingest["knowledge-base ingest"]
     fin["finance"]
     diary["diary"]
+    dash["dashboard (planned)"]
     db[("Postgres")]
     env[".env secrets"]
   end
@@ -34,6 +35,8 @@ flowchart LR
   laptop -- "A: bearer token, plain HTTP" --> mcp
   other -. "reachable port 3000" .-> mcp
   mcp --> db
+  laptop -- "D: SSH tunnel, password" --> dash
+  dash -- "SELECT only" --> db
   tg -- "C: my commands, strangers' messages" --> bot
   gh -- "C: the diary file" --> diary
   akahu -- "B: payee text I do not control" --> fin
@@ -109,6 +112,20 @@ Each row has a test ID. Tests marked **to test** are hypotheses, not findings. A
 | C7  | I      | A secret ends up in a log or an error message                                           | Logger redaction, config errors that never print values, URL-free error messages                        | **To test:** set known fake secrets, force an error in each service, and search the logs                                                                  |
 | C8  | S      | A forged or replayed response from Akahu, Anthropic or Open-Meteo                       | HTTPS, and responses validated with zod. The model's category must be on the list                       | **To test:** feed each parser a malformed response and confirm the job fails cleanly                                                                      |
 
+### D. The dashboard and the budget commands (planned, [ADR 11](adr/0011-budgets-and-dashboard.md))
+
+| ID  | STRIDE | Threat                                                                                 | What stops it today                                                     | Gap or to test                                                                                  |
+| --- | ------ | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| D1  | T, E   | A payee or payment reference with HTML or script runs in my browser (stored XSS)       | Not built yet. Plan: escape every value on output, a strict CSP         | **To test:** `<script>` and attribute-breaking payloads in a payee, a category and a note title |
+| D2  | S      | A missing, wrong or near-match password gets a page                                    | Not built yet. Plan: constant-time compare, 401 with no detail          | **To test:** empty, wrong, prefix of the real one, two headers, a very long value               |
+| D3  | S      | A spoofed Host header reaches the page from a web page (DNS rebinding)                 | Not built yet. Plan: Host allowlist, port bound to 127.0.0.1            | **To test:** IP forms, ports, trailing dots, uppercase                                          |
+| D4  | T      | A write method or an odd path changes data or reads a file                             | Not built yet. Plan: GET only, a fixed route table, a read-only DB role | **To test:** POST, PUT, DELETE, `/../`, encoded dots, and an `INSERT` through the DB role       |
+| D5  | I      | Digits survive masking and an account or card number shows on the page                 | Plan: reuse `maskDigits`                                                | **To test:** the B5 inputs against every page                                                   |
+| D6  | I      | An error page shows a stack trace, a query or a path                                   | Plan: a generic 500, detail in the log                                  | **To test:** force an error in each route and read the response                                 |
+| D7  | D      | A burst of requests, or a slow query, ties up the database                             | Plan: bounded queries, `mem_limit`, one small page                      | **To test locally only:** a burst against a throwaway database                                  |
+| D8  | T      | A `/budget set` with a category off the list, a negative or huge amount, or odd digits | Plan: category checked against the enum, amount bounded                 | **To test:** `0`, `-5`, `1e9`, `NaN`, unicode digits, a category with different case            |
+| D9  | D      | The same alert is sent again after a restart or a second sync                          | Plan: sent state stored in the database                                 | **To test:** two syncs in one month, a restart between them, and the month rolling over         |
+
 ## Threats I am not testing in this phase
 
 - **The host and the network:** SSH, the firewall, disk encryption and the router are covered by the earlier hardening and risks R7, R15 and R17.
@@ -132,6 +149,7 @@ Each row has a test ID. Tests marked **to test** are hypotheses, not findings. A
 
 ## Review
 
-| Date        | Reviewer | Result                                                                                           |
-| ----------- | -------- | ------------------------------------------------------------------------------------------------ |
-| 12 Oct 2026 | Me       | Approved by merging the draft. A8 and A9 decided in [ADR 10](adr/0010-threat-model-decisions.md) |
+| Date        | Reviewer | Result                                                                                               |
+| ----------- | -------- | ---------------------------------------------------------------------------------------------------- |
+| 12 Oct 2026 | Me       | Approved by merging the draft. A8 and A9 decided in [ADR 10](adr/0010-threat-model-decisions.md)     |
+| 13 Oct 2026 | Me       | Section D added for the budgets and dashboard phase, see [ADR 11](adr/0011-budgets-and-dashboard.md) |
