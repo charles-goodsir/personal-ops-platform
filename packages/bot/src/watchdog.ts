@@ -15,6 +15,7 @@ const LABELS: Record<Job, string> = {
   "knowledge-base-scan": "Notes scan",
   briefing: "Daily briefing",
   summary: "Weekly summary",
+  diary: "Diary message",
   backup: "Backup",
 };
 

@@ -1,8 +1,10 @@
 import { readFileSync } from "node:fs";
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import {
   diarySummary,
+  fetchDiary,
   parseDiary,
+  sendDiary,
   yesterdayNz,
   type DiaryEntry,
 } from "./diary.js";
@@ -84,4 +86,49 @@ test("yesterday is the NZ date, including the morning daylight saving starts", (
   expect(yesterdayNz(new Date("2026-10-12T19:05:00Z"))).toBe("2026-10-12"); // 07:05 on the 13th
   expect(yesterdayNz(new Date("2026-09-26T18:05:00Z"))).toBe("2026-09-26"); // 07:05 NZDT on the 27th
   expect(yesterdayNz(new Date("2026-04-04T19:05:00Z"))).toBe("2026-04-04"); // 07:05 NZST on the 5th
+});
+
+const ok = () => new Response(real);
+const fetchOf = (res: () => Response | Promise<Response>) =>
+  vi.fn<typeof fetch>(async () => res());
+
+test("fetchDiary asks GitHub raw for the one fixed file, and refuses a bad status or a huge body", async () => {
+  const good = fetchOf(ok);
+  expect(await fetchDiary({ fetchFn: good })).toBe(real);
+  expect(good.mock.calls[0]?.[0]).toBe(
+    "https://raw.githubusercontent.com/charles-goodsir/my-portfolio/main/src/data/cyberDiaryEntries.ts",
+  );
+  await expect(
+    fetchDiary({ fetchFn: fetchOf(() => new Response("", { status: 404 })) }),
+  ).rejects.toThrow("diary fetch failed: 404");
+  await expect(
+    fetchDiary({
+      fetchFn: fetchOf(() => new Response("x".repeat(2_000_001))),
+    }),
+  ).rejects.toThrow("too large");
+});
+
+test("sendDiary sends yesterday's message once, and sends nothing on a quiet day", async () => {
+  const send = vi.fn<(t: string) => Promise<void>>(async () => {});
+  expect(
+    await sendDiary({ send, day: "2026-10-12", fetchFn: fetchOf(ok) }),
+  ).toBe(true);
+  expect(send).toHaveBeenCalledTimes(1);
+  expect(send.mock.calls[0]?.[0]).toContain("Yesterday's work");
+  expect(
+    await sendDiary({ send, day: "2026-10-11", fetchFn: fetchOf(ok) }),
+  ).toBe(false);
+  expect(send).toHaveBeenCalledTimes(1);
+});
+
+test("a file that parses to no entries is an error, not a quiet day", async () => {
+  const send = vi.fn<(t: string) => Promise<void>>(async () => {});
+  await expect(
+    sendDiary({
+      send,
+      day: "2026-10-12",
+      fetchFn: fetchOf(() => new Response("<html>rate limited</html>")),
+    }),
+  ).rejects.toThrow("no entries");
+  expect(send).not.toHaveBeenCalled();
 });
