@@ -147,6 +147,34 @@ services:
       migrate:
         condition: service_completed_successfully
 
+  # Answers my Telegram commands (/spend, /subs, /notes, /briefing). Polls
+  # Telegram, so it only makes outbound calls and publishes no port. Messages
+  # from any chat but mine are ignored.
+  bot:
+    image: personal-ops:local
+    pull_policy: never
+    command: ["node", "packages/bot/dist/bot-main.js"]
+    restart: unless-stopped
+    environment:
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?set in .env}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:?set in .env}
+      # /briefing builds the same sections as the daily briefing.
+      WEATHER_LAT: ${WEATHER_LAT:?set in .env}
+      WEATHER_LON: ${WEATHER_LON:?set in .env}
+      # /notes embeds the query with the same model as the notes.
+      OLLAMA_URL: http://ollama:11434
+      EMBED_MODEL: ${EMBED_MODEL:-nomic-embed-text}
+    read_only: true
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      ollama-pull:
+        condition: service_completed_successfully
+
   # Indexes the notes folder: full scan at startup, then watches for changes.
   knowledge-base:
     image: personal-ops:local
