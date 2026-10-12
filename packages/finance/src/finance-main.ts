@@ -1,7 +1,7 @@
 // Syncs accounts then transactions from Akahu, then categorises: my rules
 // first, the model for whatever is left. At startup and every 6 hours.
 // `--once` runs a single sync and exits. Logs counts only, never transactions.
-import { createDb, createLogger, loadConfig } from "@ops/core";
+import { createDb, createLogger, loadConfig, trackRun } from "@ops/core";
 import { syncAccounts } from "./accounts.js";
 import { createAkahuClient } from "./akahu.js";
 import { applyRules, categoriseWithModel } from "./categorise.js";
@@ -28,8 +28,8 @@ const classify = finance.ANTHROPIC_API_KEY
 if (!classify)
   logger.warn("ANTHROPIC_API_KEY not set, skipping model categorisation");
 
-async function sync() {
-  try {
+function sync() {
+  return trackRun(db, logger, "finance-sync", async () => {
     const accounts = await syncAccounts(db, akahu);
     const transactions = await syncTransactions(db, akahu, {
       historyStart: finance.FINANCE_HISTORY_START,
@@ -42,11 +42,7 @@ async function sync() {
       { accounts, ...transactions, rules, model },
       "finance sync complete",
     );
-    return true;
-  } catch (err) {
-    logger.error({ err }, "finance sync failed");
-    return false;
-  }
+  });
 }
 
 if (process.argv.includes("--once")) {

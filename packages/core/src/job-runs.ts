@@ -1,4 +1,5 @@
 import type { Db } from "./db.js";
+import type { Logger } from "./logger.js";
 
 // The jobs that report in. The watchdog knows how long each may stay quiet.
 export const JOBS = [
@@ -50,4 +51,29 @@ export async function listJobRuns(db: Db): Promise<JobRun[]> {
      FROM job_runs ORDER BY job`,
   );
   return rows;
+}
+
+// Runs a job and records how it went. A failure is logged and returned, never
+// thrown, so a scheduler loop keeps running. If the heartbeat itself can't be
+// written (the database is down, say) that is logged too: it must never break
+// the job it reports on.
+export async function trackRun(
+  db: Db,
+  logger: Pick<Logger, "error" | "warn">,
+  job: Job,
+  fn: () => Promise<unknown>,
+): Promise<boolean> {
+  let ok = true;
+  try {
+    await fn();
+  } catch (err) {
+    ok = false;
+    logger.error({ err, job }, "job failed");
+  }
+  try {
+    await recordRun(db, job, ok);
+  } catch (err) {
+    logger.warn({ err, job }, "could not record the job's heartbeat");
+  }
+  return ok;
 }
