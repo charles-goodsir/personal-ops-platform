@@ -175,6 +175,7 @@ test("/status shows each job: ok, failing, late, or not yet run", async () => {
       "knowledge-base-scan: ok, 12m ago",
       "briefing: failing (2 in a row), last ok 20h ago",
       "summary: no run recorded yet",
+      "diary: no run recorded yet",
       "backup: LATE, last ok 3d ago",
     ].join("\n"),
   );

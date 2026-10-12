@@ -147,6 +147,27 @@ services:
       migrate:
         condition: service_completed_successfully
 
+  # Sends yesterday's diary entries to Telegram at DIARY_TIME (NZ), as its own
+  # message. Reads my public my-portfolio repo from GitHub. Nothing on a day
+  # with no entry.
+  diary:
+    image: personal-ops:local
+    pull_policy: never
+    command: ["node", "packages/briefing/dist/diary-main.js"]
+    restart: unless-stopped
+    environment:
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?set in .env}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:?set in .env}
+      DIARY_TIME: ${DIARY_TIME:-07:05}
+    read_only: true
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
   # Answers my Telegram commands (/spend, /subs, /notes, /briefing). Polls
   # Telegram, so it only makes outbound calls and publishes no port. Messages
   # from any chat but mine are ignored.

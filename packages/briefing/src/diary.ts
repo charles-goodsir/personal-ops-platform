@@ -91,3 +91,38 @@ export function diarySummary(
   });
   return `Yesterday's work\n\n${blocks.join("\n\n")}`;
 }
+
+// The public repo, fixed in code: nothing a caller or a message can change.
+const DIARY_URL =
+  "https://raw.githubusercontent.com/charles-goodsir/my-portfolio/main/src/data/cyberDiaryEntries.ts";
+const MAX_BYTES = 2_000_000; // the real file is about 300 KB
+
+export async function fetchDiary(
+  opts: { fetchFn?: typeof fetch; timeoutMs?: number } = {},
+): Promise<string> {
+  const doFetch = opts.fetchFn ?? fetch;
+  const res = await doFetch(DIARY_URL, {
+    signal: AbortSignal.timeout(opts.timeoutMs ?? 15_000),
+  });
+  if (!res.ok) throw new Error(`diary fetch failed: ${res.status}`);
+  const text = await res.text();
+  if (text.length > MAX_BYTES) throw new Error("diary fetch failed: too large");
+  return text;
+}
+
+// Sends yesterday's message, or nothing on a quiet day. A file with no entries
+// at all means the layout changed or the fetch returned the wrong thing, so
+// that throws: the heartbeat then stays old and the watchdog alerts, instead of
+// every day looking quiet.
+export async function sendDiary(opts: {
+  send: (text: string) => Promise<void>;
+  day: string;
+  fetchFn?: typeof fetch;
+}): Promise<boolean> {
+  const entries = parseDiary(await fetchDiary({ fetchFn: opts.fetchFn }));
+  if (entries.length === 0) throw new Error("diary parse found no entries");
+  const text = diarySummary(entries, opts.day);
+  if (text === null) return false;
+  await opts.send(text);
+  return true;
+}
