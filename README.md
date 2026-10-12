@@ -142,6 +142,7 @@ Short records of the choices that shaped the project, with what I rejected and w
 7. [A Telegram bot that answers fixed commands, for me only](docs/adr/0007-telegram-command-bot.md)
 8. [Heartbeats and a watchdog, so a silent failure becomes a message](docs/adr/0008-heartbeats-and-watchdog.md), with an update for the outside check
 9. [Yesterday's diary entries as their own morning message](docs/adr/0009-diary-message.md)
+10. [Decisions from the threat model: an audit line, one token, no rate limit](docs/adr/0010-threat-model-decisions.md)
 
 ## Setup
 
@@ -178,6 +179,7 @@ The [risk assessment](RISK_ASSESSMENT.md) lists what I am protecting, what could
 
 - The mini PC runs only what it needs. A port scan from another machine on the LAN finds just SSH (22) and the MCP server (3000). The printing and modem services are disabled, the old build agent's folder is deleted, and unattended upgrades include Ubuntu's security pocket, which Linux Mint's default config misses. Avahi (`.local` names) is left running.
 
+- I wrote a [threat model](docs/threat-model.md), then attacked my own server and tools with about 200 tests and wrote up every result, including the 17 findings I fixed, in [docs/security-testing.md](docs/security-testing.md). The MCP server logs one audit line per request (the tool and the argument names, never the values) and logs failed token guesses.
 - The repo is public. `main` is protected by a ruleset: changes need a pull request and a passing `check`, and force pushes and deletion are blocked. I proved it by trying a direct push and getting it rejected. Secret scanning with push protection and Dependabot alerts are on, and the history was scanned with gitleaks before and after going public. See [SECURITY.md](SECURITY.md) for reporting a problem.
 - Bearer tokens are hashed before a constant-time compare. `MCP_AUTH_TOKENS` takes several tokens so one can be rotated in before the old one is removed.
 - A Host header allowlist protects against DNS rebinding.

@@ -40,6 +40,32 @@ export function loadHttpConfig(
   return result.data;
 }
 
+// What a request asked for, for the audit line: the JSON-RPC method, the tool
+// name, and the NAMES of the arguments. Never their values, which can hold my
+// data. Everything is cut short, because the caller chose it.
+const cut = (v: unknown, n: number) =>
+  typeof v === "string" ? v.slice(0, n) : undefined;
+function describeCalls(body: unknown) {
+  const messages = Array.isArray(body) ? body : [body];
+  return messages.slice(0, 10).map((m: unknown) => {
+    const msg = (m ?? {}) as {
+      method?: unknown;
+      params?: Record<string, unknown>;
+    };
+    const args = msg.params?.arguments;
+    return {
+      method: cut(msg.method, 50),
+      tool: cut(msg.params?.name, 50),
+      args:
+        args && typeof args === "object" && !Array.isArray(args)
+          ? Object.keys(args)
+              .slice(0, 20)
+              .map((k) => k.slice(0, 50))
+          : [],
+    };
+  });
+}
+
 // Stateless: a fresh server and transport per request, so no session state to leak between callers.
 export function createHttpApp(deps: Deps, config: HttpConfig): express.Express {
   // The order matters. The Host check and the token come before the body is
@@ -52,6 +78,20 @@ export function createHttpApp(deps: Deps, config: HttpConfig): express.Express {
   app.use("/mcp", express.json());
 
   app.post("/mcp", async (req, res) => {
+    // One line per request that got past the token: what was asked, how it
+    // ended and how long it took. Refused requests are logged by the auth check.
+    const started = Date.now();
+    res.on("finish", () => {
+      deps.logger.info(
+        {
+          calls: describeCalls(req.body),
+          status: res.statusCode,
+          ms: Date.now() - started,
+          ip: req.ip,
+        },
+        "mcp request",
+      );
+    });
     const server = createServer(deps);
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined,

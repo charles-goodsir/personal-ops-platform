@@ -1,6 +1,6 @@
 # Threat model
 
-Status: **draft, waiting for my review.** No attack work starts until I approve this. Written 12 October 2026 from the code as it stands. It covers the Personal Ops Platform running on my mini PC. The [risk assessment](../RISK_ASSESSMENT.md) is the register of what I accepted. This document is the reasoning behind it: who could attack what, how, and what stops them. Where I have not checked a claim, it says "to test".
+Status: **approved and used.** Reviewed and merged on 12 October 2026 before any attack work started. The results are in [security-testing.md](security-testing.md). Written 12 October 2026 from the code as it stands. It covers the Personal Ops Platform running on my mini PC. The [risk assessment](../RISK_ASSESSMENT.md) is the register of what I accepted. This document is the reasoning behind it: who could attack what, how, and what stops them. Where I have not checked a claim, it says "to test".
 
 ## What the system is
 
@@ -132,6 +132,6 @@ Each row has a test ID. Tests marked **to test** are hypotheses, not findings. A
 
 ## Review
 
-| Date | Reviewer | Result                     |
-| ---- | -------- | -------------------------- |
-| TBD  | Me       | Draft submitted for review |
+| Date        | Reviewer | Result                                                                                           |
+| ----------- | -------- | ------------------------------------------------------------------------------------------------ |
+| 12 Oct 2026 | Me       | Approved by merging the draft. A8 and A9 decided in [ADR 10](adr/0010-threat-model-decisions.md) |

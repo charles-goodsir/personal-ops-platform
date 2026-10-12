@@ -453,3 +453,120 @@ describe("A7: methods and paths", () => {
     expect([400, 401, 404]).toContain(res.status);
   });
 });
+
+describe("A8: the audit line", () => {
+  const call = (body: object, own = app) =>
+    rawHttp(
+      own.port,
+      buildRequest({
+        headers: [
+          ["Host", `127.0.0.1:${own.port}`],
+          ["Content-Type", "application/json"],
+          ["Accept", "application/json, text/event-stream"],
+          good,
+        ],
+        body: JSON.stringify(body),
+      }),
+    );
+  const lines = (own = app) =>
+    own.logs
+      .join("")
+      .split("\n")
+      .filter((l) => l.includes('"mcp request"'));
+
+  test("a tool call is logged with the tool and the argument names, never the values", async () => {
+    const own = await startTestApp();
+    try {
+      await call(
+        {
+          jsonrpc: "2.0",
+          id: 1,
+          method: "tools/call",
+          params: {
+            name: "get_transactions",
+            arguments: { search: "TOP-SECRET-VALUE", limit: 5 },
+          },
+        },
+        own,
+      );
+      const written = lines(own).join("\n");
+      expect(written).toContain('"tool":"get_transactions"');
+      expect(written).toContain('"args":["search","limit"]');
+      expect(written).not.toContain("TOP-SECRET-VALUE");
+      expect(written).toMatch(/"status":\d+/);
+    } finally {
+      await own.close();
+    }
+  });
+
+  test("a call the schema refuses is still logged", async () => {
+    const own = await startTestApp();
+    try {
+      await call(
+        {
+          jsonrpc: "2.0",
+          id: 1,
+          method: "tools/call",
+          params: { name: "get_transactions", arguments: { limit: -1 } },
+        },
+        own,
+      );
+      expect(lines(own).join("")).toContain('"tool":"get_transactions"');
+    } finally {
+      await own.close();
+    }
+  });
+
+  test("hostile names are cut short and a big batch is capped", async () => {
+    const own = await startTestApp();
+    try {
+      const long = "k".repeat(200);
+      // Under the 100 KB body limit, so it reaches the audit line.
+      const batch = Array.from({ length: 12 }, (_, i) => ({
+        jsonrpc: "2.0",
+        id: i,
+        method: long,
+        params: {
+          name: long,
+          arguments: Object.fromEntries(
+            Array.from({ length: 25 }, (_, j) => [`${long}${j}`, 1]),
+          ),
+        },
+      }));
+      await call(batch, own);
+      const written = lines(own);
+      expect(written).toHaveLength(1);
+      const { calls } = JSON.parse(written[0] ?? "{}") as {
+        calls: { method: string; tool: string; args: string[] }[];
+      };
+      expect(calls).toHaveLength(10);
+      for (const c of calls) {
+        expect(c.method.length).toBeLessThanOrEqual(50);
+        expect(c.tool.length).toBeLessThanOrEqual(50);
+        expect(c.args.length).toBeLessThanOrEqual(20);
+        for (const a of c.args) expect(a.length).toBeLessThanOrEqual(50);
+      }
+    } finally {
+      await own.close();
+    }
+  });
+
+  test("a request refused at the door has no audit line, only the auth failure", async () => {
+    const own = await startTestApp();
+    try {
+      await rawHttp(
+        own.port,
+        buildRequest({
+          headers: [
+            ["Host", `127.0.0.1:${own.port}`],
+            ["Content-Type", "application/json"],
+          ],
+          body: init,
+        }),
+      );
+      expect(lines(own)).toHaveLength(0);
+    } finally {
+      await own.close();
+    }
+  });
+});
