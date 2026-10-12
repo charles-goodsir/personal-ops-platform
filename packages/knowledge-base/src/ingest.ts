@@ -1,12 +1,16 @@
 import { createHash } from "node:crypto";
-import { readdir, readFile, stat } from "node:fs/promises";
-import { extname, join, relative, sep } from "node:path";
+import { lstat, readdir, readFile, realpath } from "node:fs/promises";
+import { extname, join, relative, resolve, sep } from "node:path";
 import type { Db, Logger } from "@ops/core";
 import type { Embedder } from "./embed.js";
 import { CHUNKER_VERSION } from "./chunk.js";
 import { parseNote, SUPPORTED } from "./extract.js";
 
 export type IngestResult = "added" | "updated" | "unchanged" | "skipped";
+
+// A note bigger than this is skipped: it would be read whole into memory, chunked
+// and embedded, and nothing I write by hand is this large.
+const MAX_FILE_BYTES = 20 * 1024 * 1024;
 
 // Inputs per Ollama request. Keeps one huge PDF from becoming one huge call.
 const EMBED_BATCH = 32;
@@ -23,7 +27,24 @@ export function createIngester(deps: {
   // Indexes one file, given its path relative to notesDir.
   async function ingestFile(path: string): Promise<IngestResult> {
     const full = join(notesDir, path);
-    const [data, info] = await Promise.all([readFile(full), stat(full)]);
+    // Only a plain file that really lives inside the notes folder. A link, a
+    // pipe, a "../" path, or a link in a folder on the way out all stop here:
+    // the real path has to stay under the real notes folder.
+    const [root, real, info] = await Promise.all([
+      realpath(notesDir),
+      realpath(full),
+      lstat(full),
+    ]);
+    const rel = relative(resolve(root), resolve(real));
+    if (rel === ".." || rel.startsWith(`..${sep}`)) {
+      throw new Error("path is outside the notes folder");
+    }
+    if (!info.isFile()) return "skipped";
+    if (info.size > MAX_FILE_BYTES) {
+      logger.warn({ path, bytes: info.size }, "note too large, skipped");
+      return "skipped";
+    }
+    const data = await readFile(full);
     // The chunker version is part of the hash, so a chunking change re-indexes.
     const hash = createHash("sha256")
       .update(`chunker:${CHUNKER_VERSION}\n`)

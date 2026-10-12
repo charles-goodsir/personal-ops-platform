@@ -5,12 +5,19 @@ export interface DiaryEntry {
 }
 
 const MAX_BULLETS = 8;
+const MAX_MESSAGE = 3900;
 
 // 'text' or "text", with \' \" and \\ undone. Anything else (a template string,
 // a concatenation) is not a plain literal, and returns null.
 function unquote(raw: string): string | null {
   const m = /^(['"])(.*)\1,?$/.exec(raw.trim());
-  return m ? (m[2] ?? "").replace(/\\(['"\\])/g, "$1") : null;
+  // Control and direction-changing characters become spaces: this text goes
+  // into a message, and a hostile file could use them to mislead.
+  return m
+    ? (m[2] ?? "")
+        .replace(/\\(['"\\])/g, "$1")
+        .replace(/[\p{Cc}\u202a-\u202e\u2066-\u2069]/gu, " ")
+    : null;
 }
 
 // Reads the entries out of my-portfolio's cyberDiaryEntries.ts without running
@@ -89,7 +96,16 @@ export function diarySummary(
     }
     return [e.title, ...lines].join("\n");
   });
-  return `Yesterday's work\n\n${blocks.join("\n\n")}`;
+  // One Telegram message holds 4096 characters. Cut at an entry, and say so.
+  let text = "Yesterday's work";
+  for (const [i, block] of blocks.entries()) {
+    const next = `${text}\n\n${block}`;
+    if (next.length > MAX_MESSAGE && i > 0) {
+      return `${text}\n\nand ${blocks.length - i} more entries`;
+    }
+    text = next.slice(0, MAX_MESSAGE);
+  }
+  return text;
 }
 
 // The public repo, fixed in code: nothing a caller or a message can change.

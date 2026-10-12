@@ -14,9 +14,10 @@ export type Update = {
 // and anyone else are ignored without a reply.
 export function isAuthorised(u: Update, chatId: string): boolean {
   const m = u.message;
+  // Optional chaining: an update without a chat must be refused, not crash the loop.
   return (
     m !== undefined &&
-    m.chat.type === "private" &&
+    m.chat?.type === "private" &&
     String(m.chat.id) === chatId &&
     String(m.from?.id) === chatId
   );
@@ -60,28 +61,32 @@ export function createBot(opts: {
   async function process(updates: Update[]): Promise<number | undefined> {
     let ignored = 0;
     for (const u of updates) {
-      const text = u.message?.text;
-      if (!isAuthorised(u, chatId)) {
-        ignored++;
-        continue;
-      }
-      if (!text) continue;
-      if (!allow(now())) {
-        logger.warn("rate limit reached, message dropped");
-        continue;
-      }
       try {
-        await reply(await handle(text));
+        const text = u.message?.text;
+        if (!isAuthorised(u, chatId)) {
+          ignored++;
+          continue;
+        }
+        if (!text) continue;
+        if (!allow(now())) {
+          logger.warn("rate limit reached, message dropped");
+          continue;
+        }
+        try {
+          await reply(await handle(text));
+        } catch (err) {
+          logger.error({ err }, "bot command failed");
+          await reply("Something went wrong.").catch(() => {});
+        }
       } catch (err) {
-        logger.error({ err }, "bot command failed");
-        await reply("Something went wrong.").catch(() => {});
+        // A malformed update is skipped, so it can't be fetched again for ever.
+        logger.warn({ err }, "update skipped");
       }
     }
     if (ignored > 0)
       logger.warn({ ignored }, "ignored messages from other chats");
-    return updates.length
-      ? Math.max(...updates.map((u) => u.update_id)) + 1
-      : undefined;
+    const ids = updates.map((u) => u.update_id).filter(Number.isInteger);
+    return ids.length ? Math.max(...ids) + 1 : undefined;
   }
 
   async function run(signal: AbortSignal) {

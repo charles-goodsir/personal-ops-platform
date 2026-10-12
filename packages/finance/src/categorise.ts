@@ -65,7 +65,7 @@ export async function applyRules(db: Db) {
      SET category = NULL, category_source = NULL, categorised_at = NULL
      WHERE t.category_source = 'rule' AND NOT EXISTS (
        SELECT 1 FROM category_rules r
-       WHERE position(r.pattern IN lower(t.description || ' ' || coalesce(t.merchant, ''))) > 0)`,
+       WHERE position(r.pattern IN lower(${maskedSql("t.description || ' ' || coalesce(t.merchant, '')")})) > 0)`,
   );
   return { applied: applied ?? 0, cleared: cleared ?? 0 };
 }
