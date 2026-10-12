@@ -1,0 +1,140 @@
+export interface DiaryLab {
+  title: string
+  notes: string[]
+  solution: string
+  /** Whether the lab was fully solved. Some blind/OAST labs are blocked behind Burp Pro. */
+  status?: 'completed' | 'in-progress' | 'blocked'
+  /** Reference screenshots, relative to src/assets, e.g. 'Burp/Lab10.webp' */
+  screenshots?: string[]
+  /** Path to an accompanying automation script, relative to src/assets, e.g. 'LabScripts/sqli_solver.py' */
+  script?: string
+}
+
+export interface DiaryEntry {
+  id: string
+  /** ISO date string, e.g. '2026-07-28'. Used for sorting. */
+  date: string
+  /** Project this entry belongs to, used for filtering (e.g. 'AppSec Homelab'). */
+  category: string
+  title: string
+  /** What you actually did that day. */
+  workedOn: string[]
+  /** Intro or reflection before lab breakdown. */
+  body: string[]
+  /** Per-lab write-ups with solutions. */
+  labs?: DiaryLab[]
+  /** Before/after (or standalone) code snippets, rendered as labelled code blocks after `body`. */
+  codeSnippets?: { label: string; code: string }[]
+  tools?: string[]
+  tags?: string[]
+  /** External references, rendered as a list at the end. */
+  links?: { label: string; url: string }[]
+  milestone?: boolean
+  /** Paths relative to src/assets, e.g. 'Homelab/HomeLab3.webp'. */
+  screenshots?: string[]
+}
+
+/**
+ * Add new posts at the top of this array (newest first).
+ * Keep dates as YYYY-MM-DD so sorting stays correct.
+ */
+export const cyberDiaryEntries: DiaryEntry[] = [
+  {
+    id: 'personal-ops-platform-entry-4-host-hardening-scan',
+    date: '2026-10-12',
+    category: 'Personal Ops Platform',
+    title:
+      'Hardening the mini PC before it holds bank data, and a scan that said the host was down',
+    workedOn: [
+      'Scanned the mini PC from my laptop: only SSH and the MCP port answered',
+      'Disabled cups, cups-browsed and ModemManager, and deleted the old Azure DevOps agent folder',
+      "Confirmed Ubuntu's security origin in the unattended-upgrades log",
+      'Wrote the disk encryption decision into the README',
+      'Next: check the first scheduled briefing',
+    ],
+    body: [
+      'Before I trusted the mini PC with bank data, I worked through the host list I had put off. I started read-only: listening ports, running services, update timers and the disk. A scan from my laptop found only SSH on 22 and the MCP server on 3000, which is what I wanted. But three services I never use were running: cups, cups-browsed and ModemManager. That is a printer service and a modem manager on a wifi-only box with no printer. They listened on localhost only, so the scan could not see them.',
+      "I disabled all three and deleted the 892 MB folder left by the Azure DevOps build agent from my old pipeline project. The agent service was already disabled, but the folder was still there. I also read the unattended-upgrades log instead of trusting the config. It lists origin=Ubuntu,archive=noble-security among the allowed origins, which is the fix for Mint's default config missing Ubuntu's security updates. The scan gave the same two open ports before and after, so removing those services shrank what runs on the box and left what is reachable unchanged.",
+      'The scan taught me something about the firewall. The first run of nmap said the host seemed down, because nmap pings first and the firewall drops pings. Adding -Pn skipped the ping. The full scan was slow because each dropped packet waits for a timeout, and silence is what I want from a closed port when I scan from outside.',
+      'I decided not to encrypt the disk. Encrypting an existing root disk means a reinstall, the realistic threat is someone taking a home PC, and the Akahu and API tokens can be revoked. I wrote the reasoning into the README and left it for the next rebuild. SSH password login stays behind the LAN-only rule and fail2ban, and I left Avahi running.',
+      "I got one thing wrong along the way. I said the morning briefing had arrived, but what I had seen was my own test message, and the mini PC's clock showed the scheduled run was still hours away. A manual run proves the sections and the config. Only an unattended morning proves the timer.",
+      'Check each claim against the thing that can show it: a scan from another machine for what is reachable, a log for what ran, and a scheduled run for the schedule.',
+    ],
+    screenshots: ['PersonalOps/PO10.webp', 'PersonalOps/PO11.webp'],
+    tools: [
+      'Linux Mint',
+      'ufw',
+      'nmap',
+      'systemd',
+      'unattended-upgrades',
+      'Docker Compose',
+    ],
+  },
+  {
+    id: 'personal-ops-platform-entry-3-finance-agent-masking',
+    date: '2026-10-12',
+    category: 'Personal Ops Platform',
+    milestone: true,
+    title:
+      'Bank data on my own hardware, and the card digits my mask let through',
+    workedOn: [
+      'Synced Akahu transactions with no account numbers stored, and categorised them with my rules first and Claude Haiku second',
+      'Masked descriptions before they leave the box, and sent only aggregates in a weekly Telegram summary',
+      'Deployed Phase 3 to the mini PC with nightly backups',
+      'Next: the daily briefing',
+    ],
+    body: [
+      "Phase 3 gives Claude my bank transactions, so I treated every step as a question about what leaves the mini PC. Akahu supplies the data. The parser never reads account numbers or holder names, so the table has no column to store them. A keys-only look at real transactions showed another party's account number on 53% of rows, so the whole meta block is dropped. Claude Haiku categorises from masked descriptions and amounts, and my own rules always override it.",
+      "Real data found what the tests missed. The first live run categorised 750 transactions, then failed on a category that wasn't in my list. The SDK's zod helper had turned my enum into a description, so the API was only hinted at the list. I wrote the JSON schema by hand with a real enum, the remaining 1,400 went through, and a test now checks the tool schemas carry the enum too. Later a Ticketmaster description ended in six asterisks and four digits. The bank had masked the card number, but my six-digit mask let the last four through. Anything after a run of asterisks is now replaced.",
+      'The weekly Telegram summary reaches the model as aggregates: totals, category sums and a few payee names with digits masked. A test serialises the digest and checks that the account name, a card number and the description text are absent. I removed the masking to confirm, and two tests failed. Payment references are text written by whoever pays me, so the only tools that change data can set categories and nothing else.',
+      'The backup service taught me the same thing from the deploy side. Docker created the backups folder as root on the mini PC, the dump failed, and the container kept showing as running until I made a failed dump exit. Deploying the finished phase brought the mini PC forward six PRs, and the first sync pruned 1,310 old rows and categorised the 840 that remained.',
+      'A control counts once I have broken it and watched a test fail, and real data shows gaps that a hand-made fixture never will.',
+    ],
+    screenshots: [
+      'PersonalOps/PO7.webp',
+      'PersonalOps/PO8.webp',
+      'PersonalOps/PO9.webp',
+    ],
+    tools: [
+      'TypeScript',
+      'MCP',
+      'Akahu',
+      'Claude API',
+      'PostgreSQL',
+      'Telegram',
+      'Docker Compose',
+    ],
+  },
+  {
+    id: 'personal-ops-platform-entry-2-local-knowledge-base',
+    date: '2026-10-10',
+    category: 'Personal Ops Platform',
+    title: 'A knowledge base that stays on my own hardware',
+    milestone: true,
+    workedOn: [
+      'Added notes search to the MCP server, with embeddings from a local Ollama model on the mini PC',
+      "Moved the CI database image from Docker Hub to GitHub's registry, pinned by digest",
+      'Next: the finance agent',
+    ],
+    body: [
+      'I added a knowledge base to my personal ops platform so Claude can answer questions from my own notes and cite the file each answer came from. The control I cared about was keeping the notes at home. Embedding a note sends all of it to the model, so I run the embedding model locally with Ollama on the mini PC instead of calling a hosted API. Ollama publishes no port, the notes folder is mounted read-only, and the notes directory is in .gitignore and .dockerignore so a note can\'t end up in git or in an image. One detail surprised me: nomic-embed-text expects "search_document:" in front of stored text and "search_query:" in front of questions, and leaving them off makes the results worse without any error.',
+      "The first PR failed before any of my code ran. GitHub's runners couldn't pull the Postgres image from Docker Hub. Anonymous pulls hit the rate limit, then the login server timed out. A Docker Hub token didn't help, because the same login endpoint timed out from my laptop too. I copied the image to GitHub's own registry with docker buildx imagetools create, which keeps the digest identical, so the pin in CI still names the exact image I tested. CI pulls it with the token every run already gets, so there's no long-lived secret to manage. I also merged one PR before its own check finished, which GitHub Free doesn't block on a private repo.",
+      "Testing on the real target caught two problems. In the deployed stack, search failed because the MCP server's container had no address for Ollama and looked for it on itself, which no unit test could see. On my Mac, Docker Desktop never passed a file delete into the container, so the index kept a note I had removed. On the mini PC's native Linux mount the same delete showed up straight away, and a 15-minute rescan stays as a backstop. The first index of 102 notes took about 25 minutes on CPU, which is the cost of keeping embeddings local.",
+      "Searching my real notes turned up one more bug: a chunk that started halfway through a word. A long bullet list was being cut every 1500 characters. The splitter now breaks at lines, then sentences, then words, and a chunker version in each file's hash makes the mini PC re-index when the chunking changes.",
+      'A test proves the environment it ran in, so I prove the rest on the machine the service runs on.',
+    ],
+    tools: [
+      'TypeScript',
+      'MCP',
+      'Ollama',
+      'pgvector',
+      'Docker Compose',
+      'GitHub Actions',
+    ],
+    tags: ['Personal Ops Platform', 'data privacy', 'supply chain', 'homelab'],
+    screenshots: [
+      'PersonalOps/PO4.webp',
+      'PersonalOps/PO5.webp',
+      'PersonalOps/PO6.webp',
+    ],
+  },
