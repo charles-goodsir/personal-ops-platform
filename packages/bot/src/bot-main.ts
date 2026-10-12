@@ -13,6 +13,7 @@ import {
   createTelegramSender,
   listJobRuns,
   loadConfig,
+  pingHealthcheck,
 } from "@ops/core";
 import { createFinanceApi } from "@ops/finance";
 import { createEmbedder, createNotesApi } from "@ops/knowledge-base";
@@ -57,6 +58,9 @@ process.on("SIGTERM", shutdown);
 const watchdog = createWatchdog({
   db,
   logger,
+  ping: config.HEALTHCHECK_PING_URL
+    ? () => pingHealthcheck({ url: config.HEALTHCHECK_PING_URL as string })
+    : undefined,
   send: createTelegramSender({
     token: settings.TELEGRAM_BOT_TOKEN,
     chatId: settings.TELEGRAM_CHAT_ID,

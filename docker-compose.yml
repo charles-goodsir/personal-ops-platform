@@ -166,6 +166,9 @@ services:
       # /notes embeds the query with the same model as the notes.
       OLLAMA_URL: http://ollama:11434
       EMBED_MODEL: ${EMBED_MODEL:-nomic-embed-text}
+      # Optional: the watchdog pings this after each check, so an outside
+      # service alerts me if the bot or Telegram goes down.
+      HEALTHCHECK_PING_URL: ${HEALTHCHECK_PING_URL:-}
     read_only: true
     security_opt: ["no-new-privileges:true"]
     cap_drop: [ALL]

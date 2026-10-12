@@ -130,3 +130,48 @@ run("run() checks on an interval and stops when aborted", async () => {
   await done;
   expect(send).toHaveBeenCalledTimes(1); // checked many times, alerted once
 });
+
+const quickLoop = async (
+  db: Db,
+  ping: () => Promise<void>,
+  warn = vi.fn(),
+): Promise<void> => {
+  const watchdog = createWatchdog({
+    db,
+    send: mockSend(),
+    logger: { warn },
+    ping,
+    now: () => now,
+    intervalMs: 20,
+  });
+  const controller = new AbortController();
+  const done = watchdog.run(controller.signal);
+  await new Promise((r) => setTimeout(r, 250));
+  controller.abort();
+  await done;
+};
+const emptyDb = { query: async () => ({ rows: [] }) } as unknown as Db;
+
+test("pings after each check that worked, and a failed ping is only logged", async () => {
+  const warn = vi.fn();
+  const ping = vi.fn<() => Promise<void>>(async () => {
+    throw new Error("no response");
+  });
+  await quickLoop(emptyDb, ping, warn);
+  expect(ping.mock.calls.length).toBeGreaterThan(3); // kept checking after failures
+  expect(warn).toHaveBeenCalledWith(
+    expect.objectContaining({ err: expect.any(Error) }),
+    "healthcheck ping failed",
+  );
+});
+
+test("does not ping when the check itself fails", async () => {
+  const brokenDb = {
+    query: async () => {
+      throw new Error("database down");
+    },
+  } as unknown as Db;
+  const ping = vi.fn<() => Promise<void>>(async () => {});
+  await quickLoop(brokenDb, ping);
+  expect(ping).not.toHaveBeenCalled();
+});
