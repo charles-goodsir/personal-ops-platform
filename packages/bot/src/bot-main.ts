@@ -7,11 +7,18 @@ import {
   runBriefing,
   weatherSection,
 } from "@ops/briefing";
-import { createDb, createLogger, listJobRuns, loadConfig } from "@ops/core";
+import {
+  createDb,
+  createLogger,
+  createTelegramSender,
+  listJobRuns,
+  loadConfig,
+} from "@ops/core";
 import { createFinanceApi } from "@ops/finance";
 import { createEmbedder, createNotesApi } from "@ops/knowledge-base";
 import { createCommandHandler } from "./commands.js";
 import { createBot } from "./poller.js";
+import { createWatchdog } from "./watchdog.js";
 
 const config = loadConfig();
 const settings = loadBriefingConfig();
@@ -47,6 +54,18 @@ const shutdown = () => controller.abort();
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
 
-logger.info("bot polling for commands");
-await bot.run(controller.signal);
+const watchdog = createWatchdog({
+  db,
+  logger,
+  send: createTelegramSender({
+    token: settings.TELEGRAM_BOT_TOKEN,
+    chatId: settings.TELEGRAM_CHAT_ID,
+  }),
+});
+
+logger.info("bot polling for commands, watchdog checking jobs");
+await Promise.all([
+  bot.run(controller.signal),
+  watchdog.run(controller.signal),
+]);
 await db.end();

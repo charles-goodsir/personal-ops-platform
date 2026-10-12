@@ -2,8 +2,10 @@ import { afterAll, beforeAll, expect, test } from "vitest";
 import type { Db } from "./db.js";
 import { vi } from "vitest";
 import {
+  clearAlert,
   jobHealth,
   listJobRuns,
+  markAlerted,
   MAX_QUIET_MS,
   recordRun,
   trackRun,
@@ -176,4 +178,17 @@ test("each job's quiet limit matches how often it runs", () => {
   expect(h("backup")).toBeGreaterThan(24); // nightly
   expect(h("briefing")).toBeGreaterThan(24); // daily
   expect(h("summary")).toBeGreaterThan(7 * 24); // weekly
+});
+
+run("markAlerted and clearAlert set and clear alerted_at", async () => {
+  const db = getDb();
+  await recordRun(db, "backup", true, t(1));
+  await markAlerted(db, "backup", t(5));
+  expect(
+    (await listJobRuns(db)).find((r) => r.job === "backup")?.alertedAt,
+  ).toEqual(t(5));
+  await clearAlert(db, "backup");
+  expect(
+    (await listJobRuns(db)).find((r) => r.job === "backup")?.alertedAt,
+  ).toBeNull();
 });
