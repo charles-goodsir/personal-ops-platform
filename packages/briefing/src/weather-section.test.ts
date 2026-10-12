@@ -12,7 +12,10 @@ const forecast = {
 };
 const section = (res: Response) => {
   const fetchFn = vi.fn<typeof fetch>(async () => res);
-  return { fetchFn, s: weatherSection({ lat: -36.97, lon: 174.82, fetchFn }) };
+  return {
+    fetchFn,
+    s: weatherSection({ lat: -36.97, lon: 174.82, fetchFn, retryDelayMs: 0 }),
+  };
 };
 
 test("summarises today's forecast in one line", async () => {
@@ -66,4 +69,26 @@ test("weather codes map to words", () => {
     "Snow showers",
     "Thunderstorms",
   ]);
+});
+
+test("retries a 503 and uses the next good answer", async () => {
+  const fetchFn = vi
+    .fn<typeof fetch>()
+    .mockResolvedValueOnce(new Response("busy", { status: 503 }))
+    .mockRejectedValueOnce(new Error("network"))
+    .mockResolvedValueOnce(Response.json(forecast));
+  const s = weatherSection({
+    lat: -36.97,
+    lon: 174.82,
+    fetchFn,
+    retryDelayMs: 0,
+  });
+  expect(await s.build()).toContain("Showers");
+  expect(fetchFn).toHaveBeenCalledTimes(3);
+});
+
+test("gives up after three tries", async () => {
+  const { s, fetchFn } = section(new Response("busy", { status: 503 }));
+  await expect(s.build()).rejects.toThrow(/503/);
+  expect(fetchFn).toHaveBeenCalledTimes(3);
 });

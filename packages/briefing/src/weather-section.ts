@@ -31,6 +31,7 @@ export function weatherSection(opts: {
   lat: number;
   lon: number;
   fetchFn?: typeof fetch;
+  retryDelayMs?: number;
 }): Section {
   if (Math.abs(opts.lat) > 90 || Math.abs(opts.lon) > 180)
     throw new Error("weather coordinates are out of range");
@@ -47,8 +48,20 @@ export function weatherSection(opts: {
         timezone: "Pacific/Auckland",
         forecast_days: "1",
       }).toString();
-      const res = await doFetch(url, { signal: AbortSignal.timeout(10_000) });
-      if (!res.ok) throw new Error(`open-meteo answered ${res.status}`);
+      // Open-Meteo answers 503 now and then, so try three times before the
+      // section is skipped.
+      let res: Response | undefined;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        if (attempt > 1)
+          await new Promise((r) => setTimeout(r, opts.retryDelayMs ?? 5_000));
+        try {
+          res = await doFetch(url, { signal: AbortSignal.timeout(10_000) });
+          if (res.ok) break;
+        } catch (err) {
+          if (attempt === 3) throw err;
+        }
+      }
+      if (!res?.ok) throw new Error(`open-meteo answered ${res?.status}`);
       const { daily: d } = Forecast.parse(await res.json());
       return [
         "Weather",
