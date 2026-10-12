@@ -178,6 +178,7 @@ The [risk assessment](RISK_ASSESSMENT.md) lists what I am protecting, what could
 
 - The mini PC runs only what it needs. A port scan from another machine on the LAN finds just SSH (22) and the MCP server (3000). The printing and modem services are disabled, the old build agent's folder is deleted, and unattended upgrades include Ubuntu's security pocket, which Linux Mint's default config misses. Avahi (`.local` names) is left running.
 
+- The repo is public. `main` is protected by a ruleset: changes need a pull request and a passing `check`, and force pushes and deletion are blocked. I proved it by trying a direct push and getting it rejected. Secret scanning with push protection and Dependabot alerts are on, and the history was scanned with gitleaks before and after going public. See [SECURITY.md](SECURITY.md) for reporting a problem.
 - Bearer tokens are hashed before a constant-time compare. `MCP_AUTH_TOKENS` takes several tokens so one can be rotated in before the old one is removed.
 - A Host header allowlist protects against DNS rebinding.
 - gitleaks runs as a pre-commit hook and again in CI. CI actions are pinned by commit SHA, and images by digest.
