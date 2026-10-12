@@ -99,6 +99,9 @@ services:
       CLAUDE_BULK_MODEL: ${CLAUDE_BULK_MODEL:-claude-haiku-5-5}
       FINANCE_HISTORY_START: ${FINANCE_HISTORY_START:-2026-01-01}
       FINANCE_SYNC_TIME: ${FINANCE_SYNC_TIME:-08:00}
+      # Budget alerts go to the same Telegram chat as the briefing.
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?set in .env}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:?set in .env}
     read_only: true
     security_opt: ["no-new-privileges:true"]
     cap_drop: [ALL]

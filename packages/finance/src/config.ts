@@ -9,6 +9,13 @@ const schema = z.object({
     .union([z.string().startsWith("sk-ant-"), z.literal("")])
     .optional(),
   CLAUDE_BULK_MODEL: z.string().min(1).default("claude-haiku-5-5"),
+  // Optional: without both, the sync runs and budget alerts are skipped.
+  TELEGRAM_BOT_TOKEN: z
+    .union([z.string().regex(/^\d+:[\w-]+$/), z.literal("")])
+    .optional(),
+  TELEGRAM_CHAT_ID: z
+    .union([z.string().regex(/^-?\d+$/), z.literal("")])
+    .optional(),
   // Earliest transaction date to fetch and keep. Akahu stamps a transaction
   // at 23:59 NZ time on its date, so a plain date splits days correctly.
   // When the daily sync runs, 24-hour NZ time.

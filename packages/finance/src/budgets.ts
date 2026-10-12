@@ -39,7 +39,8 @@ export function createBudgetsApi(db: Db) {
         `WITH old AS (SELECT monthly_limit FROM budgets WHERE category = $1)
          INSERT INTO budgets (category, monthly_limit) VALUES ($1, $2)
          ON CONFLICT (category) DO UPDATE
-           SET monthly_limit = EXCLUDED.monthly_limit, updated_at = now()
+           SET monthly_limit = EXCLUDED.monthly_limit, updated_at = now(),
+               alert_month = NULL, alert_level = 0
          RETURNING (SELECT monthly_limit FROM old) AS replaced`,
         [category, limit],
       );
