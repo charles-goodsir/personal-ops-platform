@@ -4,3 +4,10 @@ export { createDb, checkDb, type Db } from "./db.js";
 export { createTestDb } from "./test-db.js";
 export { nextRun, type Schedule } from "./schedule.js";
 export { callTelegram, createTelegramSender } from "./telegram.js";
+export {
+  JOBS,
+  listJobRuns,
+  recordRun,
+  type Job,
+  type JobRun,
+} from "./job-runs.js";
