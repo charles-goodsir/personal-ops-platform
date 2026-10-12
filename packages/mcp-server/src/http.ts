@@ -1,5 +1,6 @@
-import { createMcpExpressApp } from "@modelcontextprotocol/sdk/server/express.js";
+import { hostHeaderValidation } from "@modelcontextprotocol/sdk/server/middleware/hostHeaderValidation.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import express from "express";
 import { z } from "zod";
 import { bearerAuth } from "./auth.js";
 import { createServer, type Deps } from "./server.js";
@@ -40,12 +41,15 @@ export function loadHttpConfig(
 }
 
 // Stateless: a fresh server and transport per request, so no session state to leak between callers.
-export function createHttpApp(deps: Deps, config: HttpConfig) {
-  const app = createMcpExpressApp({
-    host: config.MCP_HTTP_HOST,
-    allowedHosts: config.MCP_ALLOWED_HOSTS,
-  });
-  app.use("/mcp", bearerAuth(config.MCP_AUTH_TOKENS));
+export function createHttpApp(deps: Deps, config: HttpConfig): express.Express {
+  // The order matters. The Host check and the token come before the body is
+  // read, so a stranger gets a refusal without reaching the JSON parser, and the
+  // framework is not announced.
+  const app = express();
+  app.disable("x-powered-by");
+  app.use(hostHeaderValidation(config.MCP_ALLOWED_HOSTS));
+  app.use("/mcp", bearerAuth(config.MCP_AUTH_TOKENS, deps.logger));
+  app.use("/mcp", express.json());
 
   app.post("/mcp", async (req, res) => {
     const server = createServer(deps);
@@ -69,6 +73,36 @@ export function createHttpApp(deps: Deps, config: HttpConfig) {
   app.all("/mcp", (_req, res) => {
     res.set("Allow", "POST").status(405).json({ error: "method not allowed" });
   });
+
+  // Errors and unknown paths are JSON, never Express's HTML page, which shows a
+  // stack when NODE_ENV is not "production".
+  app.use((_req, res) => {
+    res.status(404).json({ error: "not found" });
+  });
+  app.use(
+    (
+      err: { status?: number },
+      _req: express.Request,
+      res: express.Response,
+      // Express only treats a 4-argument function as an error handler.
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      _next: express.NextFunction,
+    ) => {
+      const status =
+        typeof err.status === "number" && err.status >= 400 && err.status < 500
+          ? err.status
+          : 500;
+      if (status === 500) deps.logger.error({ err }, "mcp http error");
+      res.status(status).json({
+        error:
+          status === 413
+            ? "payload too large"
+            : status === 500
+              ? "internal error"
+              : "bad request",
+      });
+    },
+  );
 
   return app;
 }

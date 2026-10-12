@@ -41,6 +41,15 @@ export function parseResponse(raw: string): RawResponse {
   return { status, headers, body, raw };
 }
 
+// True once the head and as many body bytes as Content-Length promised have
+// arrived, so a keep-alive reply does not make a test wait for the socket to idle.
+function complete(raw: string): boolean {
+  const split = raw.indexOf("\r\n\r\n");
+  if (split === -1) return false;
+  const length = /\r\ncontent-length: *(\d+)/i.exec(raw.slice(0, split))?.[1];
+  return length !== undefined && raw.length - split - 4 >= Number(length);
+}
+
 // status 0 means the server sent nothing back before it closed or timed out.
 export function rawHttp(
   port: number,
@@ -59,7 +68,10 @@ export function rawHttp(
     };
     socket.setTimeout(timeoutMs, finish);
     socket.on("connect", () => socket.write(request));
-    socket.on("data", (c) => chunks.push(c));
+    socket.on("data", (c) => {
+      chunks.push(c);
+      if (complete(Buffer.concat(chunks).toString("latin1"))) finish();
+    });
     socket.on("end", finish);
     socket.on("close", finish);
     socket.on("error", finish);
