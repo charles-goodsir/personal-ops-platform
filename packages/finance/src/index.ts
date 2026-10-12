@@ -43,3 +43,10 @@ export {
   formatSpending,
   formatSubscriptions,
 } from "./format.js";
+export {
+  BUDGET_CATEGORIES,
+  createBudgetsApi,
+  type Budget,
+  type BudgetsApi,
+  type BudgetStatus,
+} from "./budgets.js";
