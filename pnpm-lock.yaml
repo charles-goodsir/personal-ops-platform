@@ -41,6 +41,9 @@ importers:
       '@ops/finance':
         specifier: workspace:*
         version: link:../finance
+      '@ops/knowledge-base':
+        specifier: workspace:*
+        version: link:../knowledge-base
 
   packages/briefing:
     dependencies:

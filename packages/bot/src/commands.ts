@@ -8,17 +8,21 @@ import {
   type FinanceApi,
   type Period,
 } from "@ops/finance";
+import type { NotesApi } from "@ops/knowledge-base";
 import type { Handler } from "./poller.js";
 
 const HELP = `Commands:
 /spend [period] [category]  spending, default this month
 /subs [all]  recurring charges
+/notes <words>  titles and paths of matching notes
+/briefing  send the daily briefing now
 /help
 
 Periods: ${PERIODS.map((p) => p.replace(/_/g, " ")).join(", ")}
 Categories: ${CATEGORIES.join(", ")}`;
 
 const MAX_LENGTH = 100;
+const NOTES_SHOWN = 5;
 
 // "last month Eating out" -> the period, and what is left over as a category.
 // A period can be written with spaces or underscores.
@@ -37,6 +41,8 @@ function splitPeriod(rest: string): { period: Period; category: string } {
 // the period names and the category list. Nothing is passed on as free text.
 export function createCommandHandler(deps: {
   finance: FinanceApi;
+  notes: Pick<NotesApi, "searchNotes">;
+  briefing: () => Promise<string>;
   now?: () => Date;
 }): Handler {
   const now = deps.now ?? (() => new Date());
@@ -71,6 +77,24 @@ export function createCommandHandler(deps: {
           await deps.finance.getCategorySpending(range, match),
         );
       }
+      case "/notes": {
+        if (rest === "") return "Use /notes followed by a few words.";
+        // Search returns chunks, so one note can appear several times. Only
+        // titles and paths go to Telegram, never note text.
+        const hits = await deps.notes.searchNotes(rest, NOTES_SHOWN * 3);
+        const seen = new Set<string>();
+        const lines: string[] = [];
+        for (const h of hits) {
+          if (seen.has(h.noteId) || lines.length === NOTES_SHOWN) continue;
+          seen.add(h.noteId);
+          lines.push(`${lines.length + 1}. ${h.title} (${h.path})`);
+        }
+        return lines.length
+          ? `Notes matching "${rest}":\n${lines.join("\n")}`
+          : "No matching notes.";
+      }
+      case "/briefing":
+        return deps.briefing();
       default:
         return "Unknown command. Send /help.";
     }

@@ -10,9 +10,21 @@ const finance = {
   getCategorySpending: vi.fn(),
   listSubscriptions: vi.fn(),
 };
+const notes = { searchNotes: vi.fn() };
+const briefing = vi.fn();
 const handle = createCommandHandler({
   finance: finance as unknown as FinanceApi,
+  notes,
+  briefing,
   now: () => now,
+});
+const hit = (noteId: string, title: string, path: string) => ({
+  noteId,
+  title,
+  path,
+  heading: "A heading",
+  content: "SECRET NOTE TEXT",
+  score: 0.9,
 });
 
 beforeEach(() => {
@@ -33,6 +45,8 @@ beforeEach(() => {
     topPayees: [{ payee: "Cafe", spent: 5, count: 1 }],
   });
   finance.listSubscriptions.mockResolvedValue([]);
+  notes.searchNotes.mockResolvedValue([]);
+  briefing.mockResolvedValue("the briefing");
 });
 
 test("/spend with nothing defaults to this month, all categories", async () => {
@@ -103,4 +117,33 @@ test("unknown commands, plain text and long messages get a short refusal", async
     "That message is too long.",
   );
   expect(finance.getSpending).not.toHaveBeenCalled();
+});
+
+test("/notes lists each matching note once, by title and path, never its text", async () => {
+  notes.searchNotes.mockResolvedValue([
+    hit("1", "Docker", "docker.md"),
+    hit("1", "Docker", "docker.md"), // a second chunk of the same note
+    hit("2", "SSH", "ssh.md"),
+  ]);
+  const reply = await handle("/notes firewall rules");
+  expect(reply).toBe(
+    'Notes matching "firewall rules":\n1. Docker (docker.md)\n2. SSH (ssh.md)',
+  );
+  expect(reply).not.toContain("SECRET");
+  expect(notes.searchNotes).toHaveBeenCalledWith("firewall rules", 15);
+});
+
+test("/notes shows at most five notes, and says when nothing matched or no words were given", async () => {
+  notes.searchNotes.mockResolvedValue(
+    Array.from({ length: 9 }, (_, i) => hit(`${i}`, `Note ${i}`, `n${i}.md`)),
+  );
+  expect((await handle("/notes many")).split("\n")).toHaveLength(6);
+  notes.searchNotes.mockResolvedValue([]);
+  expect(await handle("/notes nothing")).toBe("No matching notes.");
+  expect(await handle("/notes")).toBe("Use /notes followed by a few words.");
+});
+
+test("/briefing sends whatever the briefing builds", async () => {
+  expect(await handle("/briefing")).toBe("the briefing");
+  expect(briefing).toHaveBeenCalledOnce();
 });

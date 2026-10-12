@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@ops/core": "workspace:*",
-    "@ops/finance": "workspace:*"
+    "@ops/finance": "workspace:*",
+    "@ops/knowledge-base": "workspace:*"
   }
 }
