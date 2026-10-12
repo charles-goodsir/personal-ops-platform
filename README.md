@@ -2,7 +2,7 @@
 
 A self-hosted personal platform on my home mini PC. It has a shared Postgres + pgvector data layer and an MCP server, so Claude can search my notes and query my finances, and a Telegram bot sends me a daily briefing and a weekly spending summary, and answers a few commands.
 
-Status: Phases 1 to 4 complete (foundation, knowledge base, finance agent, daily briefing). Next is Phase 5, polish. See [docs/brief.md](docs/brief.md) for the full plan.
+Status: complete and running on my mini PC: foundation, knowledge base, finance agent, daily briefing, command bot, and status alerts. See [docs/brief.md](docs/brief.md) for the full plan.
 
 ## Why I built it
 
@@ -23,7 +23,7 @@ flowchart LR
     brief["briefing"]
     sum["summary"]
     backup["backup (nightly pg_dump)"]
-    bot["bot (commands)"]
+    bot["bot (commands, watchdog)"]
     notes[/"Notes folder"/]
   end
   akahu["Akahu (bank data)"] --> fin
@@ -85,6 +85,7 @@ Send these to the bot from my own private chat. Every other chat is ignored with
 | `/subs [all]`                | Active recurring charges, or all of them                                |
 | `/notes <words>`             | Titles and paths of matching notes. Never note text                     |
 | `/briefing`                  | Sends the daily briefing now                                            |
+| `/status`                    | When each job last succeeded, and which are stale                       |
 | `/help`                      | Lists the commands, periods and categories                              |
 
 The commands are read-only and use no model. Arguments must match the period names and the category list, and nothing is passed on as free text. See [the ADR](docs/adr/0007-telegram-command-bot.md) for the allowlist, the rate limit and what I left out.
@@ -100,7 +101,7 @@ The commands are read-only and use no model. Arguments must match the period nam
 | `backup`         | Dumps the database at startup and nightly at 03:00 NZ time, keeping 14 days               |
 | `knowledge-base` | Scans the notes folder at startup, watches it for changes, and rescans every 15 minutes   |
 | `finance`        | Syncs accounts and transactions from Akahu at startup and every 6 hours, then categorises |
-| `bot`            | Polls Telegram for my commands and answers them. Outbound calls only, no published port   |
+| `bot`            | Polls Telegram for my commands and answers them, and runs the watchdog. Outbound only     |
 | `briefing`       | Sends the daily briefing to Telegram at `BRIEFING_TIME` (default 07:00 NZ time)           |
 | `summary`        | Sends the weekly spending summary to Telegram, Monday 08:00 NZ time                       |
 | `mcp-server`     | The MCP server. Published on the address set by `MCP_PUBLISH_ADDR`                        |
@@ -131,6 +132,7 @@ Short records of the choices that shaped the project, with what I rejected and w
 5. [What leaves the box: masking, aggregates and a small write surface](docs/adr/0005-finance-privacy.md)
 6. [A daily briefing built from plain code, and a separate weekly summary](docs/adr/0006-briefing-without-a-model.md)
 7. [A Telegram bot that answers fixed commands, for me only](docs/adr/0007-telegram-command-bot.md)
+8. [Heartbeats and a watchdog, so a silent failure becomes a message](docs/adr/0008-heartbeats-and-watchdog.md)
 
 ## Setup
 
@@ -172,6 +174,7 @@ The backups sit on the same disk as the database, so they cover mistakes and cor
 - Descriptions are masked before they leave the box: runs of 6 or more digits become `[number]`, and anything after the bank's own run of asterisks becomes `[card]`. A test checks the weekly summary's digest contains no account name, card number or description text.
 - The category list is a real `enum` in the JSON schema sent to the API. The SDK's zod helper turned it into a description, so the schema is written by hand and a test checks the MCP tools carry the enum too.
 - The command bot answers only my private chat (chat id and sender id must both match), ignores everyone else without replying, handles at most 10 messages a minute, and runs fixed read-only commands with validated arguments. I proved the allowlist live by running a copy with a wrong chat id and getting no reply.
+- Each job records a heartbeat in a `job_runs` table (last success and last attempt, no error text). `/status` and a watchdog in the `bot` service share one set of staleness limits, send one alert per incident and one "working again", and carry only the job name and age. I proved it live by backdating a heartbeat and getting the alert, then the all-clear.
 - Config errors name the variable and never print its value, including the Telegram token and chat id. Telegram send errors carry Telegram's description only, because the request URL contains the token.
 
 ## Known limits
@@ -181,7 +184,7 @@ The backups sit on the same disk as the database, so they cover mistakes and cor
 - Closed accounts are not returned by Akahu's API, so a closed credit card's history is missing and spending on it is not counted. Payments to it count as transfers.
 - Transactions older than `FINANCE_HISTORY_START` (default 2026-01-01) are not kept. Moving it later deletes older local copies on the next sync.
 - Recurring-charge and anomaly detection are plain heuristics with fixed thresholds. They are tuned on one person's data.
-- A failed summary or briefing send is retried every hour and only logged. Nothing alerts me. The briefing's schedule and retry loop have no automated test, only a manual `--once` run.
+- A failed summary or briefing send is retried every hour. If a job stays stale past its limit, the watchdog messages me once (see [the ADR](docs/adr/0008-heartbeats-and-watchdog.md)). It lives in the `bot` service and sends through Telegram, so if either is down nothing alerts me. The briefing's schedule and retry loop have no automated test, only a manual `--once` run.
 - The briefing's notes section reports file modification time, so it can't tell a new note from an edited one. Its finance section can look light if Akahu's daily refresh is late.
 - A section that times out keeps running in the background until it finishes. None of the current sections hold a connection open.
 - On Mondays the briefing and the weekly summary arrive as two separate messages.
