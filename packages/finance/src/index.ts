@@ -39,6 +39,7 @@ export {
   type TxRow,
 } from "./read.js";
 export {
+  formatBudgets,
   formatCategorySpending,
   formatSpending,
   formatSubscriptions,
