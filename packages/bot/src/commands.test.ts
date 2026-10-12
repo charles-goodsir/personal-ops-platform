@@ -1,5 +1,5 @@
 import type { JobRun } from "@ops/core";
-import type { FinanceApi } from "@ops/finance";
+import type { BudgetsApi, FinanceApi } from "@ops/finance";
 import { beforeEach, expect, test, vi } from "vitest";
 import { createCommandHandler } from "./commands.js";
 
@@ -11,11 +11,17 @@ const finance = {
   getCategorySpending: vi.fn(),
   listSubscriptions: vi.fn(),
 };
+const budgets = {
+  setBudget: vi.fn(),
+  removeBudget: vi.fn(),
+  budgetStatus: vi.fn(),
+};
 const notes = { searchNotes: vi.fn() };
 const briefing = vi.fn();
 const jobs = vi.fn();
 const handle = createCommandHandler({
   finance: finance as unknown as FinanceApi,
+  budgets: budgets as unknown as BudgetsApi,
   notes,
   briefing,
   jobs,
@@ -186,4 +192,79 @@ test("/status says so when a job has failed and never succeeded", async () => {
   expect(await handle("/status")).toContain(
     "summary: failing (3 in a row), never succeeded",
   );
+});
+
+test("/budget shows spent against each limit for this month, and says when none are set", async () => {
+  budgets.budgetStatus.mockResolvedValueOnce([
+    { category: "Eating out", limit: 100, spent: 120, percent: 120 },
+    { category: "Groceries", limit: 600, spent: 150.5, percent: 25 },
+  ]);
+  expect(await handle("/budget")).toBe(
+    "Budgets 2026-10-01 to 2026-10-14:\n  Eating out: $120.00 of $100.00 (120%) OVER\n  Groceries: $150.50 of $600.00 (25%)",
+  );
+  expect(budgets.budgetStatus.mock.calls[0]?.[0].label).toBe(
+    "2026-10-01 to 2026-10-14",
+  );
+  budgets.budgetStatus.mockResolvedValueOnce([]);
+  expect(await handle("/budget")).toMatch(/No budgets set/);
+});
+
+test("/budget set takes a category with spaces, in any case, and an amount", async () => {
+  budgets.setBudget.mockResolvedValueOnce({
+    category: "Eating out",
+    limit: 80.5,
+    replaced: null,
+  });
+  expect(await handle("/budget set EATING out 80.50")).toBe(
+    "Budget for Eating out set to $80.50 a month.",
+  );
+  expect(budgets.setBudget).toHaveBeenCalledWith("Eating out", 80.5);
+  budgets.setBudget.mockResolvedValueOnce({
+    category: "Groceries",
+    limit: 700,
+    replaced: 600,
+  });
+  expect(await handle("/budget set groceries 700")).toBe(
+    "Budget for Groceries changed from $600.00 to $700.00 a month.",
+  );
+});
+
+test("/budget set refuses a bad amount or category before the database", async () => {
+  for (const bad of [
+    "/budget set groceries",
+    "/budget set groceries 0",
+    "/budget set groceries -5",
+    "/budget set groceries 1e9",
+    "/budget set groceries 12345678",
+    "/budget set groceries 1,000",
+    "/budget set groceries 10.123",
+    "/budget set groceries NaN",
+    "/budget set groceries \u0663\u0660\u0660",
+    "/budget set income 100",
+    "/budget set transfers 100",
+    "/budget set nonsense 100",
+    "/budget set 100",
+    "/budget change groceries 100",
+  ])
+    await handle(bad);
+  expect(budgets.setBudget).not.toHaveBeenCalled();
+});
+
+test("/budget remove removes one, and says when there was none", async () => {
+  budgets.removeBudget.mockResolvedValueOnce({
+    category: "Groceries",
+    removed: true,
+  });
+  expect(await handle("/budget remove Groceries")).toBe(
+    "Removed the Groceries budget.",
+  );
+  budgets.removeBudget.mockResolvedValueOnce({
+    category: "Travel",
+    removed: false,
+  });
+  expect(await handle("/budget remove travel")).toBe(
+    "No budget set for Travel.",
+  );
+  expect(await handle("/budget remove income")).toMatch(/Budget categories/);
+  expect(budgets.removeBudget).toHaveBeenCalledTimes(2);
 });

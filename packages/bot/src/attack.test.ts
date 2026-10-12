@@ -124,13 +124,19 @@ const finance = () => ({
 function commands() {
   const f = finance();
   const searchNotes = vi.fn(async () => []);
+  const budgets = {
+    setBudget: vi.fn(),
+    removeBudget: vi.fn(),
+    budgetStatus: vi.fn(async () => []),
+  };
   const handle = createCommandHandler({
     finance: f as never,
+    budgets: budgets as never,
     notes: { searchNotes },
     briefing: async () => "briefing",
     jobs: async () => [],
   });
-  return { handle, f, searchNotes };
+  return { handle, f, searchNotes, budgets };
 }
 
 test.each([

@@ -1,3 +1,4 @@
+import type { BudgetStatus } from "./budgets.js";
 import type { Recurring } from "./insights.js";
 import type { CategorySpending, Spending } from "./read.js";
 
@@ -40,4 +41,14 @@ export function formatSubscriptions(subs: Recurring[]): string {
       )
       .join("\n") + `\nActive total: ~${nzd(monthly)}/month`
   );
+}
+
+export function formatBudgets(rows: BudgetStatus[], label: string): string {
+  if (rows.length === 0)
+    return "No budgets set. Use /budget set <category> <amount>.";
+  const lines = rows.map(
+    (b) =>
+      `  ${b.category}: ${nzd(b.spent)} of ${nzd(b.limit)} (${b.percent}%)${b.percent >= 100 ? " OVER" : ""}`,
+  );
+  return `Budgets ${label}:\n${lines.join("\n")}`;
 }
