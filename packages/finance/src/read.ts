@@ -1,5 +1,5 @@
 import type { Db } from "@ops/core";
-import { maskDigits } from "./categorise.js";
+import { maskDigits, maskedSql } from "./categorise.js";
 import { detectRecurring, loadRecentTxs, type Recurring } from "./insights.js";
 import type { Range } from "./periods.js";
 
@@ -121,7 +121,8 @@ export function createFinanceApi(db: Db) {
       return includeInactive ? all : all.filter((r) => r.active);
     },
 
-    // Search is plain text (position(), not LIKE), so % and _ match literally.
+    // Search is plain text (position(), not LIKE), so % and _ match literally. It
+    // looks at the masked text, so a hidden number can't be found by searching.
     async getTransactions(f: TxFilters): Promise<TxRow[]> {
       const { rows } = await db.query<{
         date: Date;
@@ -135,7 +136,7 @@ export function createFinanceApi(db: Db) {
          WHERE ($1::timestamptz IS NULL OR t.date >= $1)
            AND ($2::timestamptz IS NULL OR t.date < $2)
            AND ($3::text IS NULL OR t.category = $3)
-           AND ($4::text IS NULL OR position(lower($4) IN lower(t.description || ' ' || coalesce(t.merchant, ''))) > 0)
+           AND ($4::text IS NULL OR position(lower($4) IN lower(${maskedSql("t.description || ' ' || coalesce(t.merchant, '')")})) > 0)
            AND ($5::numeric IS NULL OR abs(t.amount) >= $5)
            AND ($6::numeric IS NULL OR abs(t.amount) <= $6)
          ORDER BY t.date DESC, t.akahu_id

@@ -122,3 +122,16 @@ test.skipIf(!process.env.DATABASE_URL)(
     });
   },
 );
+
+test("a control character in a pattern is refused before the database is touched", async () => {
+  const never = {
+    query: async () => {
+      throw new Error("the database must not be reached");
+    },
+  } as unknown as Db;
+  const api = createRulesApi(never);
+  for (const pattern of ["ab\ncd", "ab\tcd", "ab\u0000cd", "ab\r\ncd"])
+    await expect(api.addRule(pattern, "Other")).rejects.toThrow(
+      "control characters",
+    );
+});

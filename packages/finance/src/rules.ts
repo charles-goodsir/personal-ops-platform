@@ -1,6 +1,6 @@
 import type { Db } from "@ops/core";
 import { CATEGORIES, type Category } from "./categories.js";
-import { applyRules } from "./categorise.js";
+import { applyRules, maskedSql } from "./categorise.js";
 
 export type Rule = {
   pattern: string;
@@ -15,11 +15,17 @@ function normalise(pattern: string): string {
   if (p.length < 2 || p.length > 100) {
     throw new Error("pattern must be 2 to 100 characters");
   }
+  // A newline could forge a line when the rules are listed.
+  if (/\p{Cc}/u.test(p))
+    throw new Error("pattern can't contain control characters");
   return p;
 }
 
+const MIN_FOR_BREADTH = 20;
+const MAX_SHARE = 0.25;
+
 const MATCHES = `(SELECT count(*) FROM transactions t
-  WHERE position(r.pattern IN lower(t.description || ' ' || coalesce(t.merchant, ''))) > 0)::int`;
+  WHERE position(r.pattern IN lower(${maskedSql("t.description || ' ' || coalesce(t.merchant, '')")})) > 0)::int`;
 
 // Editing rules from chat: the write side of categorisation. Every change
 // re-applies the rules at once, so the reply shows what it actually did.
@@ -31,6 +37,24 @@ export function createRulesApi(db: Db) {
         throw new Error(`unknown category: ${category}`);
       }
       const p = normalise(pattern);
+      // One rule can't recategorise most of the transactions at once, whether it
+      // is a mistake or text steering Claude. It only applies once there is enough
+      // data for a share to mean something.
+      const { rows: breadth } = await db.query<{
+        matches: number;
+        total: number;
+      }>(
+        `SELECT count(*) FILTER (WHERE position($1 IN lower(${maskedSql("t.description || ' ' || coalesce(t.merchant, '')")})) > 0)::int AS matches,
+                count(*)::int AS total
+         FROM transactions t`,
+        [p],
+      );
+      const { matches = 0, total = 0 } = breadth[0] ?? {};
+      if (total >= MIN_FOR_BREADTH && matches > total * MAX_SHARE) {
+        throw new Error(
+          `pattern matches ${matches} of ${total} transactions, which is too broad: use a longer pattern`,
+        );
+      }
       const { rows } = await db.query<{ replaced: string | null }>(
         `WITH old AS (SELECT category FROM category_rules WHERE pattern = $1)
          INSERT INTO category_rules (pattern, category) VALUES ($1, $2)

@@ -19,8 +19,29 @@ export type Classifier = (
 // Runs of 6+ digits in descriptions are card fragments, references and
 // account-like numbers, and a bank's own card mask ("****** 7997") still ends
 // in real card digits. None of them leave the box.
+// Card numbers and NZ account numbers are often written in groups, so the groups
+// are masked as a whole before the plain runs. The patterns use only syntax that
+// JavaScript and Postgres share (no \b: it means backspace in Postgres), so the
+// same list masks text in code and, through maskedSql, inside a query.
+const MASKS: [pattern: string, replacement: string][] = [
+  ["\\*{2,}\\s*\\d{1,4}", "[card]"],
+  ["\\d{4}[ -]\\d{4}[ -]\\d{4}[ -]\\d{1,4}", "[number]"], // 4-4-4-4
+  ["\\d{4}[ -]\\d{6}[ -]\\d{5}", "[number]"], // 4-6-5
+  ["\\d{2}-\\d{4}-\\d{7}-\\d{2,3}", "[number]"], // NZ account
+  ["\\d{6,}", "[number]"],
+];
+
 export const maskDigits = (s: string) =>
-  s.replace(/\*{2,}\s*\d{1,4}/g, "[card]").replace(/\d{6,}/g, "[number]");
+  MASKS.reduce((out, [p, r]) => out.replace(new RegExp(p, "g"), r), s);
+
+// The same masking as SQL, for a column or expression. Searching and rule
+// matching work on this, so a caller can't find a hidden number by asking
+// whether it is there. The patterns are constants, never input.
+export const maskedSql = (expr: string) =>
+  MASKS.reduce(
+    (sql, [p, r]) => `regexp_replace(${sql}, '${p}', '${r}', 'g')`,
+    expr,
+  );
 
 // Applies my rules to every transaction, longest matching pattern first, and
 // clears rule categories whose rule has gone so the model can redo them.
@@ -30,7 +51,7 @@ export async function applyRules(db: Db) {
        SELECT DISTINCT ON (t.akahu_id) t.akahu_id, r.category
        FROM transactions t
        JOIN category_rules r
-         ON position(r.pattern IN lower(t.description || ' ' || coalesce(t.merchant, ''))) > 0
+         ON position(r.pattern IN lower(${maskedSql("t.description || ' ' || coalesce(t.merchant, '')")})) > 0
        ORDER BY t.akahu_id, length(r.pattern) DESC, r.id
      )
      UPDATE transactions t
