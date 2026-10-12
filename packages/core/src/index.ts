@@ -6,9 +6,12 @@ export { nextRun, type Schedule } from "./schedule.js";
 export { callTelegram, createTelegramSender } from "./telegram.js";
 export {
   JOBS,
+  jobHealth,
+  MAX_QUIET_MS,
   listJobRuns,
   recordRun,
   trackRun,
   type Job,
+  type JobHealth,
   type JobRun,
 } from "./job-runs.js";
