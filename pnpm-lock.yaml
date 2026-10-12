@@ -35,6 +35,9 @@ importers:
 
   packages/bot:
     dependencies:
+      '@ops/briefing':
+        specifier: workspace:*
+        version: link:../briefing
       '@ops/core':
         specifier: workspace:*
         version: link:../core
