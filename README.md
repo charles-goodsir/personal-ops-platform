@@ -56,7 +56,7 @@ Each module exposes functions from its own package. The MCP server, the briefing
 - Claude connects to the MCP server over streamable HTTP (bearer token) or stdio.
 - My notes folder (Markdown, text and PDF) is indexed automatically and kept in sync as files change. Claude can search it and answer from it, citing the file and heading each passage came from.
 - Embeddings run locally with Ollama, so note text never leaves the mini PC.
-- Bank transactions sync from Akahu (NZ open banking) daily at 08:00 NZ time. Akahu pulls from the bank on its own schedule, which is later than 08:00, so the sync first asks it to refresh and waits up to 3 minutes. My own rules categorise them first and Claude Haiku categorises the rest.
+- Bank transactions sync from Akahu (NZ open banking) daily at 08:00 NZ time, and again quietly at 00:05 so the day that has just ended is in. Akahu pulls from the bank on its own schedule, which is later than 08:00, so the sync first asks it to refresh and waits up to 3 minutes. My own rules categorise them first and Claude Haiku categorises the rest.
 - Claude can answer questions like "how much did I spend on groceries last month", list my recurring charges, and look up transactions.
 - Every morning at 08:30 NZ time a briefing arrives on Telegram: yesterday's spending and any unusual charge, notes that changed in the last day, and today's weather. A section that fails is skipped and shown as unavailable, and the rest still send.
 - Every morning at 09:00 NZ time a second message lists the previous day's diary entries (title and bullets), and nothing arrives on a day with no entry.

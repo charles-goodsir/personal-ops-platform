@@ -1,14 +1,13 @@
 // Syncs accounts then transactions from Akahu, then categorises: my rules
-// first, the model for whatever is left. At startup and daily at FINANCE_SYNC_TIME (NZ).
+// first, the model for whatever is left. At startup, daily at FINANCE_SYNC_TIME
+// (NZ), and quietly (no budget alerts) at FINANCE_NIGHT_SYNC_TIME.
 // `--once` runs a single sync and exits. Logs counts only, never transactions.
 import {
   createDb,
   createLogger,
   createTelegramSender,
   loadConfig,
-  nextRun,
   trackRun,
-  type Schedule,
 } from "@ops/core";
 import { syncAccounts } from "./accounts.js";
 import { createAkahuClient } from "./akahu.js";
@@ -17,12 +16,18 @@ import { checkBudgetAlerts } from "./budget-alerts.js";
 import { createClaudeClassifier } from "./claude.js";
 import { loadFinanceConfig } from "./config.js";
 import { refreshBankData } from "./refresh.js";
+import { nextSlot, type Slot } from "./sync-schedule.js";
 import { syncTransactions } from "./transactions.js";
 
 const config = loadConfig();
 const finance = loadFinanceConfig();
 const logger = createLogger(config);
-const DAILY: Schedule = { time: finance.FINANCE_SYNC_TIME };
+const SLOTS: Slot[] = [
+  { time: finance.FINANCE_SYNC_TIME, alerts: true },
+  ...(finance.FINANCE_NIGHT_SYNC_TIME
+    ? [{ time: finance.FINANCE_NIGHT_SYNC_TIME, alerts: false }]
+    : []),
+];
 const db = createDb(config);
 const akahu = createAkahuClient({
   appToken: finance.AKAHU_APP_TOKEN,
@@ -57,7 +62,7 @@ async function alerts() {
   }
 }
 
-function sync() {
+function sync(withAlerts = true) {
   return trackRun(db, logger, "finance-sync", async () => {
     // Asking the banks first is a bonus: any failure here, a rate limit
     // included, leaves the sync to carry on with what Akahu already has.
@@ -79,7 +84,7 @@ function sync() {
       "finance sync complete",
     );
   }).then(async (ok) => {
-    if (ok) await alerts();
+    if (ok && withAlerts) await alerts();
     return ok;
   });
 }
@@ -92,10 +97,10 @@ if (process.argv.includes("--once")) {
   await sync();
   let timer: NodeJS.Timeout;
   const schedule = () => {
-    const at = nextRun(new Date(), DAILY);
-    logger.info({ at: at.toISOString() }, "next daily finance sync");
+    const { at, alerts } = nextSlot(new Date(), SLOTS);
+    logger.info({ at: at.toISOString(), alerts }, "next finance sync");
     timer = setTimeout(
-      () => void sync().then(schedule),
+      () => void sync(alerts).then(schedule),
       at.getTime() - Date.now(),
     );
   };

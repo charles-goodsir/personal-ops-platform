@@ -23,6 +23,11 @@ const schema = z.object({
     .string()
     .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
     .default("08:00"),
+  // A second, quiet sync just after midnight, so the day that has just ended
+  // is in before anything else looks. Empty turns it off.
+  FINANCE_NIGHT_SYNC_TIME: z
+    .union([z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/), z.literal("")])
+    .default("00:05"),
   FINANCE_HISTORY_START: z.iso
     .date()
     .default("2026-01-01")
