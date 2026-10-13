@@ -3,6 +3,7 @@ import type { Dashboard } from "./data.js";
 import { renderDashboard } from "./render.js";
 
 const base = (): Dashboard => ({
+  freshness: "Bank data refreshed Tue 13 Oct, 11:17 (23h ago)",
   month: {
     range: {
       from: new Date(),
@@ -58,6 +59,7 @@ test("shows the month, budgets with words as well as colour, and the role", () =
   expect(page).toContain("● Near limit");
   expect(page).toContain("✓ On track");
   expect(page).toContain("Database role: dashboard_ro");
+  expect(page).toContain("Bank data refreshed Tue 13 Oct, 11:17 (23h ago)");
   // An over-budget meter never draws wider than its track.
   expect(page).toContain('class="fill-crit" width="100%"');
 });

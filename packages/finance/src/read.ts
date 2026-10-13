@@ -115,6 +115,15 @@ export function createFinanceApi(db: Db) {
       };
     },
 
+    // When Akahu last pulled from the bank, for the account that is furthest
+    // behind. Null until a sync has stored one.
+    async getBankFreshness(): Promise<Date | null> {
+      const { rows } = await db.query<{ at: Date | null }>(
+        "SELECT min(transactions_refreshed_at) AS at FROM accounts WHERE status = 'ACTIVE'",
+      );
+      return rows[0]?.at ?? null;
+    },
+
     async listSubscriptions(
       includeInactive: boolean,
       now = new Date(),

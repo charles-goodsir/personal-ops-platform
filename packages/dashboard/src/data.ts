@@ -8,6 +8,7 @@ import {
 import {
   createBudgetsApi,
   createFinanceApi,
+  formatFreshness,
   dateRange,
   resolvePeriod,
   type BudgetStatus,
@@ -16,6 +17,7 @@ import {
 } from "@ops/finance";
 
 export type Dashboard = {
+  freshness: string; // when the bank data was last pulled
   month: Spending;
   budgets: BudgetStatus[];
   trend: { label: string; total: number; current: boolean }[]; // oldest first
@@ -47,14 +49,17 @@ export async function loadDashboard(
     return { first, range: dateRange(iso(first), iso(last)) };
   });
 
-  const [month, budgets, past, subscriptions, runs] = await Promise.all([
-    finance.getSpending(thisMonth),
-    createBudgetsApi(db).budgetStatus(thisMonth),
-    Promise.all(earlier.map((e) => finance.getSpending(e.range))),
-    finance.listSubscriptions(false, now),
-    listJobRuns(db),
-  ]);
+  const [month, budgets, past, subscriptions, runs, refreshed] =
+    await Promise.all([
+      finance.getSpending(thisMonth),
+      createBudgetsApi(db).budgetStatus(thisMonth),
+      Promise.all(earlier.map((e) => finance.getSpending(e.range))),
+      finance.listSubscriptions(false, now),
+      listJobRuns(db),
+      finance.getBankFreshness(),
+    ]);
   return {
+    freshness: formatFreshness(refreshed, now),
     month,
     budgets,
     trend: [

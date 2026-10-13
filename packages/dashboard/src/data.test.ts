@@ -54,4 +54,5 @@ run("loads the month, budgets, a six month trend and every job", async () => {
     { label: "Oct", total: 210, current: true },
   ]);
   expect(d.jobs.map((j) => j.job)).toContain("finance-sync");
+  expect(d.freshness).toBe("Bank data: refresh time unknown");
 });

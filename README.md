@@ -56,7 +56,7 @@ Each module exposes functions from its own package. The MCP server, the briefing
 - Claude connects to the MCP server over streamable HTTP (bearer token) or stdio.
 - My notes folder (Markdown, text and PDF) is indexed automatically and kept in sync as files change. Claude can search it and answer from it, citing the file and heading each passage came from.
 - Embeddings run locally with Ollama, so note text never leaves the mini PC.
-- Bank transactions sync from Akahu (NZ open banking) daily at 08:00 NZ time. My own rules categorise them first and Claude Haiku categorises the rest.
+- Bank transactions sync from Akahu (NZ open banking) daily at 08:00 NZ time. Akahu pulls from the bank on its own schedule, which is later than 08:00, so the sync first asks it to refresh and waits up to 3 minutes. My own rules categorise them first and Claude Haiku categorises the rest.
 - Claude can answer questions like "how much did I spend on groceries last month", list my recurring charges, and look up transactions.
 - Every morning at 08:30 NZ time a briefing arrives on Telegram: yesterday's spending and any unusual charge, notes that changed in the last day, and today's weather. A section that fails is skipped and shown as unavailable, and the rest still send.
 - Every morning at 09:00 NZ time a second message lists the previous day's diary entries (title and bullets), and nothing arrives on a day with no entry.
@@ -201,7 +201,7 @@ The [risk assessment](RISK_ASSESSMENT.md) lists what I am protecting, what could
 - Transactions older than `FINANCE_HISTORY_START` (default 2026-01-01) are not kept. Moving it later deletes older local copies on the next sync.
 - Recurring-charge and anomaly detection are plain heuristics with fixed thresholds. They are tuned on one person's data.
 - A failed summary or briefing send is retried every hour. If a job stays stale past its limit, the watchdog messages me once (see [the ADR](docs/adr/0008-heartbeats-and-watchdog.md)). It lives in the `bot` service and sends through Telegram, so an outside check pings Healthchecks.io and emails me if the bot, its database connection or the watchdog loop stops. If Healthchecks is down at the same time as the box, nothing alerts me. The briefing's schedule and retry loop have no automated test, only a manual `--once` run.
-- The briefing's notes section reports file modification time, so it can't tell a new note from an edited one. Its finance section can look light if Akahu's daily refresh is late.
+- The briefing's notes section reports file modification time, so it can't tell a new note from an edited one. Its finance section ends with when Akahu last pulled from the bank. Akahu's personal apps have a one hour rest period, so a refresh request inside it is ignored, and a refresh that takes over 3 minutes is not waited for.
 - A section that times out keeps running in the background until it finishes. None of the current sections hold a connection open.
 - On Mondays the briefing, the diary message and the weekly summary arrive as three separate messages.
 - The diary message is only as fresh as my last push to my-portfolio's `main`, and its parser depends on that file's formatting. If the layout changes it fails loudly rather than going quiet.

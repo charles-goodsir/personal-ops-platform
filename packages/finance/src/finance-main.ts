@@ -16,6 +16,7 @@ import { applyRules, categoriseWithModel } from "./categorise.js";
 import { checkBudgetAlerts } from "./budget-alerts.js";
 import { createClaudeClassifier } from "./claude.js";
 import { loadFinanceConfig } from "./config.js";
+import { refreshBankData } from "./refresh.js";
 import { syncTransactions } from "./transactions.js";
 
 const config = loadConfig();
@@ -58,6 +59,13 @@ async function alerts() {
 
 function sync() {
   return trackRun(db, logger, "finance-sync", async () => {
+    // Asking the banks first is a bonus: any failure here, a rate limit
+    // included, leaves the sync to carry on with what Akahu already has.
+    const refresh = await refreshBankData(akahu).catch((err: unknown) => {
+      logger.warn({ err }, "bank refresh failed");
+      return "failed";
+    });
+    logger.info({ refresh }, "bank refresh");
     const accounts = await syncAccounts(db, akahu);
     const transactions = await syncTransactions(db, akahu, {
       historyStart: finance.FINANCE_HISTORY_START,
