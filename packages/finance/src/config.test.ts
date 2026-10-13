@@ -12,6 +12,7 @@ test("accepts tokens with Akahu's prefixes", () => {
     AKAHU_USER_TOKEN: "user_token_y",
     CLAUDE_BULK_MODEL: "claude-haiku-5-5",
     FINANCE_SYNC_TIME: "08:00",
+    FINANCE_NIGHT_SYNC_TIME: "00:05",
     FINANCE_HISTORY_START: new Date("2026-01-01T00:00:00Z"),
   });
 });
@@ -91,4 +92,23 @@ test("takes a valid sync time and rejects a bad one", () => {
   expect(() =>
     loadFinanceConfig({ ...tokens, FINANCE_SYNC_TIME: "8am" }),
   ).toThrow(/FINANCE_SYNC_TIME/);
+});
+
+test("the night sync defaults to 00:05, can be moved, and can be turned off with an empty value", () => {
+  const tokens = {
+    AKAHU_APP_TOKEN: "app_token_x",
+    AKAHU_USER_TOKEN: "user_token_y",
+  };
+  expect(loadFinanceConfig(tokens).FINANCE_NIGHT_SYNC_TIME).toBe("00:05");
+  expect(
+    loadFinanceConfig({ ...tokens, FINANCE_NIGHT_SYNC_TIME: "01:30" })
+      .FINANCE_NIGHT_SYNC_TIME,
+  ).toBe("01:30");
+  expect(
+    loadFinanceConfig({ ...tokens, FINANCE_NIGHT_SYNC_TIME: "" })
+      .FINANCE_NIGHT_SYNC_TIME,
+  ).toBe("");
+  expect(() =>
+    loadFinanceConfig({ ...tokens, FINANCE_NIGHT_SYNC_TIME: "midnight" }),
+  ).toThrow(/FINANCE_NIGHT_SYNC_TIME/);
 });

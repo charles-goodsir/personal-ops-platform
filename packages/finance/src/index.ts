@@ -52,5 +52,6 @@ export {
   type BudgetsApi,
   type BudgetStatus,
 } from "./budgets.js";
+export { nextSlot, type Slot } from "./sync-schedule.js";
 export { refreshBankData, type RefreshResult } from "./refresh.js";
 export { checkBudgetAlerts } from "./budget-alerts.js";
