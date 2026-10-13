@@ -10,6 +10,7 @@ import {
   type Schedule,
 } from "@ops/core";
 import { loadBriefingConfig } from "./config.js";
+import { budgetsSection } from "./budgets-section.js";
 import { financeSection } from "./finance-section.js";
 import { notesSection } from "./notes-section.js";
 import { runBriefing } from "./runner.js";
@@ -27,6 +28,7 @@ const send = createTelegramSender({
 });
 const sections = [
   financeSection(db),
+  budgetsSection(db),
   notesSection(db),
   weatherSection({ lat: briefing.WEATHER_LAT, lon: briefing.WEATHER_LON }),
 ];
