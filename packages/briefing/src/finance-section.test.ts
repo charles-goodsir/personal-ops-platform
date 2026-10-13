@@ -56,6 +56,7 @@ run(
         "Yesterday: $342.10 (Entertainment $300.00, Groceries $30.00)",
         "This month so far: $492.10 vs $290.00 at this point last month",
         "Unusual: TICKETMASTER [number] $300.00, about 15x the usual Entertainment charge of $20.00",
+        "Bank data: refresh time unknown",
       ].join("\n"),
     );
   },
@@ -82,4 +83,14 @@ run("on the 1st there is no month so far to compare", async () => {
   const text = await build("2026-10-31T18:00:00Z");
   expect(text).toContain("Yesterday: nothing spent");
   expect(text).not.toContain("This month so far");
+});
+
+run("the last line says when the bank data was last pulled", async () => {
+  await getDb().query(
+    "UPDATE accounts SET transactions_refreshed_at = '2026-10-13T22:17:22Z'",
+  );
+  // 11:17 NZDT on the 14th; it is 07:00 NZDT on the 15th.
+  expect(await build("2026-10-14T18:00:00Z")).toContain(
+    "Bank data refreshed Wed 14 Oct, 11:17 (20h ago)",
+  );
 });

@@ -3,6 +3,7 @@ import {
   createFinanceApi,
   dateRange,
   findAnomalies,
+  formatFreshness,
   loadRecentTxs,
   maskDigits,
 } from "@ops/finance";
@@ -73,6 +74,7 @@ export function financeSection(db: Db, now = () => new Date()): Section {
         lines.push(
           `Unusual: ${maskDigits(a.merchant ?? a.description)} ${usd(-a.amount)}, ${a.detail}`,
         );
+      lines.push(formatFreshness(await api.getBankFreshness(), at));
       return lines.join("\n");
     },
   };

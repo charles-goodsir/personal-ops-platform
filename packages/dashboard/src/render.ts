@@ -150,6 +150,7 @@ export function renderDashboard(
 <header>
 <h1>Personal Ops</h1>
 <p class="muted">${esc(d.month.range.label)}</p>
+<p class="muted">${esc(d.freshness)}</p>
 </header>
 <section class="tiles">
 <div class="tile hero"><span class="label">Spent this month</span><span class="value">${nzd(d.month.total)}</span></div>

@@ -110,3 +110,29 @@ test("drops other people's account numbers and the card suffix", async () => {
   expect(t).toMatchObject({ merchant: { name: "Countdown" } });
   expect(JSON.stringify(t)).not.toMatch(/7890123|4321/);
 });
+
+test("refresh posts to /refresh with a JSON body and both tokens", async () => {
+  const fetch = mockFetch(200, { success: true });
+  await akahu.refresh();
+  const [url, init] = fetch.mock.calls[0] as unknown as [URL, RequestInit];
+  expect(url.href).toBe("https://api.akahu.io/v1/refresh");
+  expect(init.method).toBe("POST");
+  expect(init.body).toBe("{}");
+  expect(init.headers).toEqual({
+    Authorization: `Bearer ${userToken}`,
+    "X-Akahu-Id": appToken,
+    "Content-Type": "application/json",
+  });
+});
+
+test("a rate limited refresh says so and never carries a token", async () => {
+  mockFetch(429, {
+    success: false,
+    message: "Refresh initiated within last 5 minutes",
+  });
+  const err = await akahu.refresh().catch((e: Error) => e);
+  expect((err as Error).message).toBe(
+    "Akahu refresh failed: 429 Refresh initiated within last 5 minutes",
+  );
+  expect((err as Error).message).not.toContain(userToken);
+});

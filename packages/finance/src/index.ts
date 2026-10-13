@@ -40,6 +40,7 @@ export {
 } from "./read.js";
 export {
   formatBudgets,
+  formatFreshness,
   formatCategorySpending,
   formatSpending,
   formatSubscriptions,
@@ -51,4 +52,5 @@ export {
   type BudgetsApi,
   type BudgetStatus,
 } from "./budgets.js";
+export { refreshBankData, type RefreshResult } from "./refresh.js";
 export { checkBudgetAlerts } from "./budget-alerts.js";

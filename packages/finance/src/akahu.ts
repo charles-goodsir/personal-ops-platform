@@ -63,16 +63,20 @@ export function createAkahuClient(opts: {
   async function get(
     path: string,
     params: Record<string, string> = {},
+    method: "GET" | "POST" = "GET",
   ): Promise<unknown> {
     const url = new URL(path, opts.baseUrl ?? BASE_URL);
     for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
     let res: Response;
     try {
       res = await fetch(url, {
+        method,
         headers: {
           Authorization: `Bearer ${opts.userToken}`,
           "X-Akahu-Id": opts.appToken,
+          ...(method === "POST" ? { "Content-Type": "application/json" } : {}),
         },
+        ...(method === "POST" ? { body: "{}" } : {}),
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
     } catch {
@@ -93,6 +97,12 @@ export function createAkahuClient(opts: {
   return {
     async listAccounts(): Promise<AkahuAccount[]> {
       return accountsResponse.parse(await get("accounts")).items;
+    },
+
+    // Asks Akahu to pull from the banks now. It answers at once and does the
+    // work later, so the caller watches `refreshed` on the accounts.
+    async refresh(): Promise<void> {
+      await get("refresh", {}, "POST");
     },
 
     // Settled transactions with date in (start, end]: Akahu's start is

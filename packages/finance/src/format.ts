@@ -52,3 +52,27 @@ export function formatBudgets(rows: BudgetStatus[], label: string): string {
   );
   return `Budgets ${label}:\n${lines.join("\n")}`;
 }
+
+// "Bank data refreshed Tue 13 Oct, 11:17 (23h ago)", in New Zealand time.
+export function formatFreshness(at: Date | null, now: Date): string {
+  if (!at) return "Bank data: refresh time unknown";
+  const p = Object.fromEntries(
+    new Intl.DateTimeFormat("en-NZ", {
+      timeZone: "Pacific/Auckland",
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    })
+      .formatToParts(at)
+      .map((x) => [x.type, x.value]),
+  );
+  const hours = Math.max(
+    0,
+    Math.round((now.getTime() - at.getTime()) / 3_600_000),
+  );
+  const age = hours < 48 ? `${hours}h ago` : `${Math.round(hours / 24)}d ago`;
+  return `Bank data refreshed ${p.weekday} ${p.day} ${p.month}, ${p.hour}:${p.minute} (${age})`;
+}
