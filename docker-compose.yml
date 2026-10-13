@@ -234,6 +234,30 @@ services:
       ollama-pull:
         condition: service_completed_successfully
 
+  # Read-only web page for spending, budgets and job health. Published on
+  # 127.0.0.1 only, so it is reached through an SSH tunnel: ssh -L 8081:localhost:3100.
+  dashboard:
+    image: personal-ops:local
+    pull_policy: never
+    command: ["node", "packages/dashboard/dist/dashboard-main.js"]
+    restart: unless-stopped
+    environment:
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      DASHBOARD_HOST: 0.0.0.0
+      DASHBOARD_PORT: 3100
+      DASHBOARD_ALLOWED_HOSTS: ${DASHBOARD_ALLOWED_HOSTS:-localhost,127.0.0.1}
+      DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD:?set in .env}
+    ports:
+      - "127.0.0.1:3100:3100"
+    read_only: true
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    mem_limit: 256m
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
   # Embeddings model server. No published port: only reachable from other
   # services on the compose network, so notes never leave the box.
   ollama:
