@@ -17,7 +17,7 @@ const server = createServer(
     password: dashboard.DASHBOARD_PASSWORD,
     allowedHosts: dashboard.DASHBOARD_ALLOWED_HOSTS,
     logger,
-    page: renderPage(db),
+    page: renderPage(db, { hidePayees: dashboard.DASHBOARD_HIDE_PAYEES }),
     css: CSS,
   }),
 );

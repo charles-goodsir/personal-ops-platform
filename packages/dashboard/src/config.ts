@@ -14,6 +14,11 @@ const schema = z.object({
     .string()
     .default("localhost,127.0.0.1")
     .transform(csv),
+  // "true" shows "Subscription 1" in place of payee names, for screenshots.
+  DASHBOARD_HIDE_PAYEES: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
   DASHBOARD_PASSWORD: z.string().min(20, "must be at least 20 characters"),
 });
 
