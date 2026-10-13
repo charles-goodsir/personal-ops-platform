@@ -13,12 +13,13 @@ I can ask for spending in chat, but nothing tells me when a category is running 
 - **The briefing gets a Budgets section.** It reuses the same status code as the alert and the dashboard.
 - **The dashboard is a separate `dashboard` service on `node:http`.** No framework, no client JavaScript, no CDN. Charts are inline SVG built on the server.
 - **Access is an SSH tunnel only.** The port is published on `127.0.0.1` on the mini PC. A password is still required (constant-time compare), and the `Host` header is checked against an allowlist.
-- **Read-only is enforced twice.** The server answers only `GET`, and it connects as a Postgres role that has `SELECT` on the tables it needs and nothing else. A test shows an `INSERT` through that role fails.
+- **Read-only is enforced twice.** The server answers only `GET`, and every connection switches to a Postgres role (`dashboard_ro`) that has `SELECT` on the four tables the page needs and nothing else. It is a `NOLOGIN` role that the connection takes on at startup (`-c role=dashboard_ro`), so it needs no second password. A test shows `INSERT`, `UPDATE`, `DELETE`, `TRUNCATE` and `CREATE` all fail, and so does reading the notes and rules tables.
 - **Everything shown is escaped and masked.** Payee names are written by whoever pays me, so they are HTML-escaped on output and pass through the same digit masking as the tools.
 
 ## Alternatives I did not take
 
 - **Serve the dashboard on the LAN.** It is easier to reach, and the password would cross the network in plain HTTP. The tunnel is one command.
+- **A login role with its own password.** It is stronger, because the service could never switch back to my own role. It needs a password created outside the migrations and a second secret in `.env`. The role switch can only be undone by running arbitrary SQL, and the dashboard runs fixed queries. I would move to a login role if the dashboard ever takes input into a query.
 - **Rely on the server code for read-only.** A bug in a route could then write. A database role cannot be talked out of it.
 - **A charting library or a web framework.** Faster to build, and it adds dependencies and a supply chain to a service that shows bank data.
 - **MCP tools to set budgets.** It would let Claude change limits. I would rather the only writer be my own chat.
