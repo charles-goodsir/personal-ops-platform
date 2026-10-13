@@ -8,6 +8,7 @@ test("defaults to a tunnel-only setup and lists host names in lower case", () =>
     DASHBOARD_HOST: "127.0.0.1",
     DASHBOARD_PORT: 3100,
     DASHBOARD_ALLOWED_HOSTS: ["localhost", "127.0.0.1"],
+    DASHBOARD_HIDE_PAYEES: false,
     DASHBOARD_PASSWORD: password,
   });
   expect(

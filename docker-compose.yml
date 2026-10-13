@@ -248,6 +248,7 @@ services:
       DASHBOARD_PORT: 3100
       DASHBOARD_ALLOWED_HOSTS: ${DASHBOARD_ALLOWED_HOSTS:-localhost,127.0.0.1}
       DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD:?set in .env}
+      DASHBOARD_HIDE_PAYEES: ${DASHBOARD_HIDE_PAYEES:-false}
     ports:
       - "127.0.0.1:3100:3100"
     read_only: true
