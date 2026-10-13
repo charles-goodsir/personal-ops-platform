@@ -1,6 +1,7 @@
 // Answers my Telegram commands. Long-polls Telegram (outbound calls only) and
 // ignores every chat but mine. Logs counts and errors, never message text.
 import {
+  budgetsSection,
   financeSection,
   loadBriefingConfig,
   notesSection,
@@ -28,6 +29,7 @@ const db = createDb(config);
 
 const sections = [
   financeSection(db),
+  budgetsSection(db),
   notesSection(db),
   weatherSection({ lat: settings.WEATHER_LAT, lon: settings.WEATHER_LON }),
 ];
