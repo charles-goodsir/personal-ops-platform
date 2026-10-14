@@ -32,11 +32,18 @@ const db = () => {
 };
 
 needsDb(
-  "D4: the connection runs as dashboard_ro and reads the four tables",
+  "D4: the connection runs as dashboard_ro and reads the six tables",
   async () => {
     const { rows } = await db().query("SELECT current_user AS u");
     expect(rows[0]?.u).toBe("dashboard_ro");
-    for (const table of ["transactions", "accounts", "budgets", "job_runs"])
+    for (const table of [
+      "transactions",
+      "accounts",
+      "budgets",
+      "job_runs",
+      "payday_settings",
+      "goals",
+    ])
       await db().query(`SELECT count(*) FROM ${table}`);
   },
 );
@@ -48,6 +55,8 @@ needsDb("D4: it cannot write, delete, truncate or create", async () => {
     "DELETE FROM transactions",
     "TRUNCATE accounts",
     "UPDATE job_runs SET consecutive_failures = 0",
+    "INSERT INTO goals (name, target) VALUES ('x', 1)",
+    "UPDATE payday_settings SET pay = 1",
     "CREATE TABLE x (a int)",
   ])
     await expect(db().query(sql), sql).rejects.toThrow(/permission denied/);
