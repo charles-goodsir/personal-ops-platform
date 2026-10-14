@@ -129,14 +129,34 @@ function commands() {
     removeBudget: vi.fn(),
     budgetStatus: vi.fn(async () => []),
   };
+  const payday = {
+    getSettings: vi.fn(),
+    setAmount: vi.fn(),
+    setPayday: vi.fn(),
+  };
+  const goals = {
+    listGoals: vi.fn(async () => []),
+    addGoal: vi.fn(async (g: { name: string; target: number }) => ({
+      ...g,
+      saved: 0,
+      weight: 1,
+      due: null,
+    })),
+    setSaved: vi.fn(),
+    setWeight: vi.fn(),
+    removeGoal: vi.fn(),
+  };
   const handle = createCommandHandler({
     finance: f as never,
     budgets: budgets as never,
+    payday: payday as never,
+    goals: goals as never,
+    spent: async () => 0,
     notes: { searchNotes },
     briefing: async () => "briefing",
     jobs: async () => [],
   });
-  return { handle, f, searchNotes, budgets };
+  return { handle, f, searchNotes, budgets, payday, goals };
 }
 
 test.each([
@@ -203,6 +223,112 @@ test("D8: a valid /budget set still works, with the category matched exactly and
   await handle("/budget set Eating   OUT 80.50");
   expect(budgets.setBudget).toHaveBeenCalledExactlyOnceWith("Eating out", 80.5);
 });
+
+test.each([
+  "/payday set pay 100\u0000",
+  "/payday set pay 100\u202e",
+  "/payday set pay 1e3",
+  "/payday set pay 0x10",
+  "/payday set pay -5",
+  "/payday set pay +5",
+  "/payday set pay 0",
+  "/payday set pay NaN",
+  "/payday set pay 0.001",
+  "/payday set pay 99999999",
+  "/payday set pay \u0661\u0660\u0660", // Arabic-Indic digits
+  "/payday set pay \uff11\uff10\uff10", // fullwidth digits
+  "/payday set pay 100 100",
+  "/payday set pay",
+  "/payday set",
+  "/payday set \u0440ay 100", // a Cyrillic p
+  "/payday set constructor 100",
+  "/payday set __proto__ 100",
+  "/payday set pay; DROP TABLE payday_settings 100",
+  "/payday set pay 100\n/payday set rent 1",
+  "/payday change pay 100",
+])("E1: %j never reaches the settings table", async (text) => {
+  const { handle, payday } = commands();
+  const reply = await handle(text);
+  expect(typeof reply).toBe("string");
+  expect(reply.length).toBeLessThan(4000);
+  expect(payday.setAmount).not.toHaveBeenCalled();
+});
+
+test.each([
+  "/payday set payday tomorrow",
+  "/payday set payday 2026-13-45x",
+  "/payday set payday 2026-10-13T00:00",
+  "/payday set payday 26-10-13",
+  "/payday set payday 2026-10-13 2026-10-27",
+])("E1: %j never reaches the settings table as a date", async (text) => {
+  const { handle, payday } = commands();
+  await handle(text);
+  expect(payday.setPayday).not.toHaveBeenCalled();
+});
+
+test.each([
+  "/goal add Holiday 0",
+  "/goal add Holiday -5",
+  "/goal add Holiday 1e3",
+  "/goal add Holiday 99999999",
+  "/goal add Holiday \u0661\u0660\u0660",
+  "/goal add 1000",
+  "/goal add",
+  "/goal add <script>alert(1)</script> 100",
+  '/goal add "quoted" 100',
+  "/goal add a;b 100",
+  "/goal add -leading 100",
+  "/goal add emoji \ud83d\ude80 100",
+  "/goal add nul\u0000byte 100",
+  "/goal add rtl\u202eoverride 100",
+  `/goal add ${"x".repeat(41)} 100`,
+  "/goal saved Holiday -1",
+  "/goal saved Holiday 1e3",
+  "/goal saved Holiday",
+  "/goal weight Holiday 0",
+  "/goal weight Holiday 11",
+  "/goal weight Holiday 1.5",
+])("E1/E2: %j never reaches the goals table", async (text) => {
+  const { handle, goals } = commands();
+  const reply = await handle(text);
+  expect(typeof reply).toBe("string");
+  expect(reply.length).toBeLessThan(4000);
+  expect(goals.addGoal).not.toHaveBeenCalled();
+  expect(goals.setSaved).not.toHaveBeenCalled();
+  expect(goals.setWeight).not.toHaveBeenCalled();
+});
+
+test("E2: a newline in a goal name becomes a space, so no second line can reach the list", async () => {
+  const { handle, goals } = commands();
+  await handle("/goal add Holiday\nfake line 100");
+  expect(goals.addGoal).toHaveBeenCalledExactlyOnceWith({
+    name: "Holiday fake line",
+    target: 100,
+    due: undefined,
+  });
+});
+
+test.each([
+  "/payday set pay 1",
+  "/payday set payday 2026-10-13",
+  "/goal add Holiday 100",
+  "/goal saved Holiday 100",
+  "/goal remove Holiday",
+])(
+  "E5: %s from a group, a stranger or another sender runs nothing",
+  async (text) => {
+    for (const over of [
+      { chat: { id: 42, type: "group" } },
+      { chat: { id: 7, type: "private" }, from: { id: 7 } },
+      { from: { id: 7 } },
+    ]) {
+      const { bot, handle, sent } = setup();
+      await bot.process([message(1, { ...over, text })]);
+      expect(handle).not.toHaveBeenCalled();
+      expect(sent).toEqual([]);
+    }
+  },
+);
 
 test("C2: a message of 100 characters is handled and 101 is refused", async () => {
   const { handle, searchNotes } = commands();

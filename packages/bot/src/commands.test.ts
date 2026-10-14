@@ -1,5 +1,10 @@
 import type { JobRun } from "@ops/core";
-import type { BudgetsApi, FinanceApi } from "@ops/finance";
+import type {
+  BudgetsApi,
+  FinanceApi,
+  GoalsApi,
+  PaydaySettingsApi,
+} from "@ops/finance";
 import { beforeEach, expect, test, vi } from "vitest";
 import { createCommandHandler } from "./commands.js";
 
@@ -16,12 +21,24 @@ const budgets = {
   removeBudget: vi.fn(),
   budgetStatus: vi.fn(),
 };
+const payday = { getSettings: vi.fn(), setAmount: vi.fn(), setPayday: vi.fn() };
+const goals = {
+  listGoals: vi.fn(),
+  addGoal: vi.fn(),
+  setSaved: vi.fn(),
+  setWeight: vi.fn(),
+  removeGoal: vi.fn(),
+};
+const spent = vi.fn();
 const notes = { searchNotes: vi.fn() };
 const briefing = vi.fn();
 const jobs = vi.fn();
 const handle = createCommandHandler({
   finance: finance as unknown as FinanceApi,
   budgets: budgets as unknown as BudgetsApi,
+  payday: payday as unknown as PaydaySettingsApi,
+  goals: goals as unknown as GoalsApi,
+  spent,
   notes,
   briefing,
   jobs,
@@ -267,4 +284,23 @@ test("/budget remove removes one, and says when there was none", async () => {
   );
   expect(await handle("/budget remove income")).toMatch(/Budget categories/);
   expect(budgets.removeBudget).toHaveBeenCalledTimes(2);
+});
+
+test("/payday and /goal reach the payday commands, with today's date in New Zealand", async () => {
+  payday.getSettings.mockResolvedValue({
+    pay: null,
+    rent: null,
+    savings: null,
+    invest: null,
+    spending: null,
+    payday: "2026-10-13",
+  });
+  goals.listGoals.mockResolvedValue([]);
+  expect(await handle("/payday")).toBe(
+    "Payday plan: still to set: pay, rent, savings, invest. Use /payday set <item> <amount>.",
+  );
+  expect(await handle("/goal")).toBe(
+    "No goals yet. Use /goal add <name> <target> [date].",
+  );
+  expect(await handle("/help")).toContain("/payday set <item> <amount>");
 });
