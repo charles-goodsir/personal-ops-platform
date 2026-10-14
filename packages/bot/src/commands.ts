@@ -47,10 +47,6 @@ function splitPeriod(rest: string): { period: Period; category: string } {
   return { period: "this_month", category: text };
 }
 
-// Whole dollars or dollars and cents, ASCII digits only: no signs, exponents,
-// separators or other scripts.
-const AMOUNT = /^\d{1,7}(\.\d{1,2})?$/;
-
 // Strict on purpose: a fixed list of commands, and arguments that must match
 // the period names and the category list. Nothing is passed on as free text.
 export function createCommandHandler(deps: {
