@@ -79,6 +79,27 @@ test("/payday set takes an item in any case and a plain amount", async () => {
   ).toMatch(/Payday set to 2026-10-13/);
 });
 
+test("/payday set takes several pairs at once, and saves none of them if one is bad", async () => {
+  payday.setAmount.mockImplementation(async (item, amount) => ({
+    item,
+    amount,
+  }));
+  payday.setPayday.mockResolvedValueOnce({ payday: "2026-10-13" });
+  expect(
+    await cmd.payday(
+      ["set", "pay", "1914.69", "rent", "450", "payday", "2026-10-13"],
+      "2026-10-14",
+    ),
+  ).toBe(
+    "Pay set to $1914.69.\nRent and bills set to $450.00.\nPayday set to 2026-10-13. Paydays fall every 14 days from it.",
+  );
+  expect(payday.setAmount).toHaveBeenCalledTimes(2);
+  payday.setAmount.mockClear();
+  await cmd.payday(["set", "pay", "100", "rent", "-5"], "2026-10-14");
+  await cmd.payday(["set", "pay", "100", "salary", "5"], "2026-10-14");
+  expect(payday.setAmount).not.toHaveBeenCalled();
+});
+
 test("/payday set refuses a bad item, amount or date before the database, and shows the API's message for a date that is not real", async () => {
   for (const args of [
     ["set", "salary", "100"],

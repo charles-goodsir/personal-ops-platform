@@ -17,7 +17,7 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const WEIGHT = /^([1-9]|10)$/;
 
 const PAYDAY_USAGE =
-  "Use /payday, or /payday set <pay|rent|savings|invest|spending> <amount>, or /payday set payday <YYYY-MM-DD>.";
+  "Use /payday, or /payday set <pay|rent|savings|invest|spending> <amount>, or /payday set payday <YYYY-MM-DD>. Several pairs can go in one message.";
 const GOAL_USAGE =
   "Use /goal, /goal add <name> <target> [YYYY-MM-DD], /goal saved <name> <amount>, /goal weight <name> <1-10> or /goal remove <name>.";
 const LABEL: Record<SettingItem, string> = {
@@ -63,29 +63,49 @@ export function createPaydayCommands(deps: {
           last,
         );
       }
-      const [action, item, value, ...extra] = args;
+      // One or more <item> <value> pairs, so a whole setup can go in one
+      // message. Every pair is checked before anything is saved.
+      const [action, ...pairs] = args;
       if (
         action?.toLowerCase() !== "set" ||
-        !item ||
-        !value ||
-        extra.length > 0
+        pairs.length === 0 ||
+        pairs.length % 2 !== 0
       )
         return PAYDAY_USAGE;
-      const key = item.toLowerCase();
-      if (key === "payday") {
-        if (!DATE.test(value)) return PAYDAY_USAGE;
-        try {
-          const r = await deps.payday.setPayday(value);
-          return `Payday set to ${r.payday}. Paydays fall every 14 days from it.`;
-        } catch (err) {
-          return (err as Error).message;
+      const sets: [string, string][] = [];
+      for (let i = 0; i < pairs.length; i += 2) {
+        const key = (pairs[i] as string).toLowerCase();
+        const value = pairs[i + 1] as string;
+        if (key === "payday") {
+          if (!DATE.test(value)) return PAYDAY_USAGE;
+        } else if (!SETTING_ITEMS.includes(key as SettingItem))
+          return PAYDAY_USAGE;
+        else if (!AMOUNT.test(value) || Number(value) <= 0)
+          return "The amount must be more than 0, in digits, with at most two decimals.";
+        sets.push([key, value]);
+      }
+      const replies: string[] = [];
+      for (const [key, value] of sets) {
+        if (key === "payday") {
+          try {
+            const r = await deps.payday.setPayday(value);
+            replies.push(
+              `Payday set to ${r.payday}. Paydays fall every 14 days from it.`,
+            );
+          } catch (err) {
+            // A date that is not real: the API's own message, and any
+            // earlier pairs in this message are already saved.
+            replies.push((err as Error).message);
+          }
+        } else {
+          const r = await deps.payday.setAmount(
+            key as SettingItem,
+            Number(value),
+          );
+          replies.push(`${LABEL[r.item]} set to $${r.amount.toFixed(2)}.`);
         }
       }
-      if (!SETTING_ITEMS.includes(key as SettingItem)) return PAYDAY_USAGE;
-      if (!AMOUNT.test(value) || Number(value) <= 0)
-        return "The amount must be more than 0, in digits, with at most two decimals.";
-      const r = await deps.payday.setAmount(key as SettingItem, Number(value));
-      return `${LABEL[r.item]} set to $${r.amount.toFixed(2)}.`;
+      return replies.join("\n");
     },
 
     async goal(args: string[]): Promise<string> {
