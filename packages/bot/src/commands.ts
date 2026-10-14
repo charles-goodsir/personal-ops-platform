@@ -1,13 +1,10 @@
 import {
-  BUDGET_CATEGORIES,
   CATEGORIES,
-  formatBudgets,
   formatCategorySpending,
   formatSpending,
   formatSubscriptions,
   PERIODS,
   resolvePeriod,
-  type BudgetsApi,
   type FinanceApi,
   type GoalsApi,
   type PaydaySettingsApi,
@@ -22,9 +19,6 @@ import type { Handler } from "./poller.js";
 const HELP = `Commands:
 /spend [period] [category]  spending, default this month
 /subs [all]  recurring charges
-/budget  spent against each monthly limit
-/budget set <category> <amount>
-/budget remove <category>
 /payday  the pay split, from what I spent
 /payday set <item> <amount>
 /goal  savings goals
@@ -61,7 +55,6 @@ const AMOUNT = /^\d{1,7}(\.\d{1,2})?$/;
 // the period names and the category list. Nothing is passed on as free text.
 export function createCommandHandler(deps: {
   finance: FinanceApi;
-  budgets: BudgetsApi;
   payday: PaydaySettingsApi;
   goals: GoalsApi;
   spent: (payday: string) => Promise<number>;
@@ -107,37 +100,6 @@ export function createCommandHandler(deps: {
         return formatCategorySpending(
           await deps.finance.getCategorySpending(range, match),
         );
-      }
-      case "/budget": {
-        const [action = "", ...words] = rest.toLowerCase().split(/\s+/);
-        if (action === "") {
-          const range = resolvePeriod("this_month", now());
-          return formatBudgets(
-            await deps.budgets.budgetStatus(range),
-            range.label,
-          );
-        }
-        if (action !== "set" && action !== "remove")
-          return "Use /budget, /budget set <category> <amount> or /budget remove <category>.";
-        // For set, the amount is the last word, so categories can have spaces.
-        const amount = action === "set" ? words.pop() : undefined;
-        const name = words.join(" ");
-        const match = BUDGET_CATEGORIES.find((c) => c.toLowerCase() === name);
-        if (!match) return `Budget categories: ${BUDGET_CATEGORIES.join(", ")}`;
-        if (action === "remove") {
-          const r = await deps.budgets.removeBudget(match);
-          return r.removed
-            ? `Removed the ${match} budget.`
-            : `No budget set for ${match}.`;
-        }
-        if (amount === undefined || !AMOUNT.test(amount))
-          return "Use /budget set <category> <amount>, for example /budget set groceries 600.";
-        const value = Number(amount);
-        if (value <= 0) return "The amount must be more than 0.";
-        const r = await deps.budgets.setBudget(match, value);
-        return r.replaced === null
-          ? `Budget for ${r.category} set to $${r.limit.toFixed(2)} a month.`
-          : `Budget for ${r.category} changed from $${r.replaced.toFixed(2)} to $${r.limit.toFixed(2)} a month.`;
       }
       case "/payday":
         return paydays.payday(args, today());

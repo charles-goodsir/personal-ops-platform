@@ -17,7 +17,6 @@ import {
   pingHealthcheck,
 } from "@ops/core";
 import {
-  createBudgetsApi,
   createFinanceApi,
   createGoalsApi,
   createPaydaySettingsApi,
@@ -45,7 +44,6 @@ const bot = createBot({
   logger,
   handle: createCommandHandler({
     finance: createFinanceApi(db),
-    budgets: createBudgetsApi(db),
     payday: createPaydaySettingsApi(db),
     goals: createGoalsApi(db),
     spent: (payday) => fortnightSpent(db, payday),

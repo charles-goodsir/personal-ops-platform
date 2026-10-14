@@ -1,6 +1,6 @@
 # 11. Budgets and a read-only dashboard
 
-Status: accepted
+Status: budgets superseded by [ADR 12](0012-payday-plan-and-savings-goals.md); the dashboard stands
 
 ## Context
 

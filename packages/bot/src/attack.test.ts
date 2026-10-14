@@ -124,11 +124,6 @@ const finance = () => ({
 function commands() {
   const f = finance();
   const searchNotes = vi.fn(async () => []);
-  const budgets = {
-    setBudget: vi.fn(),
-    removeBudget: vi.fn(),
-    budgetStatus: vi.fn(async () => []),
-  };
   const payday = {
     getSettings: vi.fn(),
     setAmount: vi.fn(),
@@ -148,7 +143,6 @@ function commands() {
   };
   const handle = createCommandHandler({
     finance: f as never,
-    budgets: budgets as never,
     payday: payday as never,
     goals: goals as never,
     spent: async () => 0,
@@ -156,7 +150,7 @@ function commands() {
     briefing: async () => "briefing",
     jobs: async () => [],
   });
-  return { handle, f, searchNotes, budgets, payday, goals };
+  return { handle, f, searchNotes, payday, goals };
 }
 
 test.each([
@@ -183,45 +177,6 @@ test.each([
     ...f.getSpending.mock.calls,
   ])
     expect(JSON.stringify(call)).not.toMatch(/DROP|;|--/);
-});
-
-test.each([
-  "/budget set groceries 100\u0000",
-  "/budget set groceries 100\u202e",
-  "/budget set \u0455roceries 100", // a Cyrillic s
-  "/budget set groceries 100\n/budget set travel 1",
-  "/budget set groceries 100 ; DROP TABLE budgets",
-  "/budget set groceries '; --",
-  "/budget set groceries 1e3",
-  "/budget set groceries 0x10",
-  "/budget set groceries \u0661\u0660\u0660", // Arabic-Indic digits
-  "/budget set groceries \uff11\uff10\uff10", // fullwidth digits
-  "/budget set groceries 99999999",
-  "/budget set groceries 0.001",
-  "/budget set groceries -0",
-  "/budget set groceries +100",
-  "/budget set groceries 100 100",
-  "/budget set income 100",
-  "/budget set 100",
-  "/budget set",
-  "/budget set  ",
-])("D8: %j never reaches the budgets table", async (text) => {
-  const { handle, budgets } = commands();
-  const reply = await handle(text);
-  expect(typeof reply).toBe("string");
-  expect(reply.length).toBeLessThan(4000);
-  expect(budgets.setBudget).not.toHaveBeenCalled();
-});
-
-test("D8: a valid /budget set still works, with the category matched exactly and the amount a plain number", async () => {
-  const { handle, budgets } = commands();
-  budgets.setBudget.mockResolvedValueOnce({
-    category: "Eating out",
-    limit: 80.5,
-    replaced: null,
-  });
-  await handle("/budget set Eating   OUT 80.50");
-  expect(budgets.setBudget).toHaveBeenCalledExactlyOnceWith("Eating out", 80.5);
 });
 
 test.each([

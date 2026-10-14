@@ -1,4 +1,3 @@
-import type { BudgetStatus } from "./budgets.js";
 import type { Goal } from "./goals.js";
 import { fortnightWindow, type Plan } from "./payday-plan.js";
 import type { Recurring } from "./insights.js";
@@ -43,16 +42,6 @@ export function formatSubscriptions(subs: Recurring[]): string {
       )
       .join("\n") + `\nActive total: ~${nzd(monthly)}/month`
   );
-}
-
-export function formatBudgets(rows: BudgetStatus[], label: string): string {
-  if (rows.length === 0)
-    return "No budgets set. Use /budget set <category> <amount>.";
-  const lines = rows.map(
-    (b) =>
-      `  ${b.category}: ${nzd(b.spent)} of ${nzd(b.limit)} (${b.percent}%)${b.percent >= 100 ? " OVER" : ""}`,
-  );
-  return `Budgets ${label}:\n${lines.join("\n")}`;
 }
 
 // "Bank data refreshed Tue 13 Oct, 11:17 (23h ago)", in New Zealand time.
