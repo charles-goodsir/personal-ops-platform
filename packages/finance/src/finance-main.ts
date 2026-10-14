@@ -15,6 +15,10 @@ import { applyRules, categoriseWithModel } from "./categorise.js";
 import { checkBudgetAlerts } from "./budget-alerts.js";
 import { createClaudeClassifier } from "./claude.js";
 import { loadFinanceConfig } from "./config.js";
+import { createGoalsApi } from "./goals.js";
+import { sendPaydayMessage } from "./payday-message.js";
+import { fortnightSpent, paySeen } from "./payday-plan.js";
+import { createPaydaySettingsApi } from "./payday-settings.js";
 import { refreshBankData } from "./refresh.js";
 import { nextSlot, type Slot } from "./sync-schedule.js";
 import { syncTransactions } from "./transactions.js";
@@ -51,7 +55,11 @@ const sendAlert =
     : undefined;
 if (!sendAlert) logger.warn("Telegram not set, skipping budget alerts");
 
-// A failed alert never fails the sync: the next sync tries again.
+const paydaySettings = createPaydaySettingsApi(db);
+const paydayGoals = createGoalsApi(db);
+
+// What goes to Telegram after a morning sync. A failure of either never fails
+// the sync, and each is tried again at the next one.
 async function alerts() {
   if (!sendAlert) return;
   try {
@@ -59,6 +67,18 @@ async function alerts() {
     if (sent) logger.info({ budgets: sent }, "budget alert sent");
   } catch {
     logger.warn("budget alert failed");
+  }
+  try {
+    const result = await sendPaydayMessage({
+      settings: paydaySettings,
+      goals: paydayGoals,
+      spent: (payday) => fortnightSpent(db, payday),
+      paySeen: (payday, pay) => paySeen(db, payday, pay),
+      send: sendAlert,
+    });
+    if (result === "sent") logger.info("payday message sent");
+  } catch {
+    logger.warn("payday message failed");
   }
 }
 

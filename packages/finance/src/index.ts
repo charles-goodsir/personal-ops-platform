@@ -78,7 +78,10 @@ export {
   fortnightSpent,
   fortnightWindow,
   lastPayday,
+  nzDate,
+  paySeen,
   RENT_BILLS_CATEGORIES,
   type GoalShare,
   type Plan,
 } from "./payday-plan.js";
+export { sendPaydayMessage, type PaydayResult } from "./payday-message.js";

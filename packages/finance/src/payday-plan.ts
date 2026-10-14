@@ -16,6 +16,10 @@ const FORTNIGHT = 14;
 
 const cents = (dollars: number) => Math.round(dollars * 100);
 
+// A date in New Zealand as "YYYY-MM-DD".
+export const nzDate = (at: Date) =>
+  new Intl.DateTimeFormat("en-CA", { timeZone: "Pacific/Auckland" }).format(at);
+
 export type GoalShare = { name: string; cents: number; reaches: boolean };
 
 export type Plan =
@@ -183,4 +187,21 @@ export async function fortnightSpent(db: Db, payday: string): Promise<number> {
   return discretionary(
     await createFinanceApi(db).getSpending(dateRange(from, to)),
   );
+}
+
+// True when pay has arrived: an Income transaction dated payday that is at
+// least 90% of the pay I set. Akahu stamps it 23:59:59 on the day, so it is in
+// my data from the 00:05 sync that follows.
+export async function paySeen(
+  db: Db,
+  payday: string,
+  pay: number,
+): Promise<boolean> {
+  const { from, to } = dateRange(payday, payday);
+  const { rows } = await db.query<{ n: number }>(
+    `SELECT count(*)::int AS n FROM transactions
+     WHERE category = 'Income' AND amount >= $3 AND date >= $1 AND date < $2`,
+    [from, to, pay * 0.9],
+  );
+  return (rows[0]?.n ?? 0) > 0;
 }

@@ -85,6 +85,23 @@ export function createPaydaySettingsApi(db: Db) {
       return { item, amount: value };
     },
 
+    // The payday the message was last sent for, or null if never.
+    async lastSent(): Promise<string | null> {
+      const { rows } = await db.query<{ d: string | null }>(
+        "SELECT to_char(last_payday_sent, 'YYYY-MM-DD') AS d FROM payday_settings",
+      );
+      return rows[0]?.d ?? null;
+    },
+
+    async markSent(payday: string) {
+      const value = validDate(payday);
+      await db.query(
+        `INSERT INTO payday_settings (id, last_payday_sent) VALUES (true, $1)
+         ON CONFLICT (id) DO UPDATE SET last_payday_sent = EXCLUDED.last_payday_sent`,
+        [value],
+      );
+    },
+
     async setPayday(date: string) {
       const value = validDate(date);
       await db.query(
