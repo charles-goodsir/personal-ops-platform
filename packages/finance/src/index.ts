@@ -41,6 +41,8 @@ export {
 export {
   formatBudgets,
   formatFreshness,
+  formatGoals,
+  formatPlan,
   formatCategorySpending,
   formatSpending,
   formatSubscriptions,

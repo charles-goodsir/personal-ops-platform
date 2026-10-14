@@ -16,7 +16,13 @@ import {
   loadConfig,
   pingHealthcheck,
 } from "@ops/core";
-import { createBudgetsApi, createFinanceApi } from "@ops/finance";
+import {
+  createBudgetsApi,
+  createFinanceApi,
+  createGoalsApi,
+  createPaydaySettingsApi,
+  fortnightSpent,
+} from "@ops/finance";
 import { createEmbedder, createNotesApi } from "@ops/knowledge-base";
 import { createCommandHandler } from "./commands.js";
 import { createBot } from "./poller.js";
@@ -40,6 +46,9 @@ const bot = createBot({
   handle: createCommandHandler({
     finance: createFinanceApi(db),
     budgets: createBudgetsApi(db),
+    payday: createPaydaySettingsApi(db),
+    goals: createGoalsApi(db),
+    spent: (payday) => fortnightSpent(db, payday),
     notes: createNotesApi({
       db,
       embed: createEmbedder({

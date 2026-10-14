@@ -9,11 +9,14 @@ import {
   resolvePeriod,
   type BudgetsApi,
   type FinanceApi,
+  type GoalsApi,
+  type PaydaySettingsApi,
   type Period,
 } from "@ops/finance";
 import type { NotesApi } from "@ops/knowledge-base";
 import { JOBS, jobHealth, type JobRun } from "@ops/core";
 import { ago } from "./format.js";
+import { createPaydayCommands } from "./payday-commands.js";
 import type { Handler } from "./poller.js";
 
 const HELP = `Commands:
@@ -22,6 +25,10 @@ const HELP = `Commands:
 /budget  spent against each monthly limit
 /budget set <category> <amount>
 /budget remove <category>
+/payday  the pay split, from what I spent
+/payday set <item> <amount>
+/goal  savings goals
+/goal add <name> <target> [date]
 /notes <words>  titles and paths of matching notes
 /briefing  send the daily briefing now
 /status  when each background job last worked
@@ -55,12 +62,21 @@ const AMOUNT = /^\d{1,7}(\.\d{1,2})?$/;
 export function createCommandHandler(deps: {
   finance: FinanceApi;
   budgets: BudgetsApi;
+  payday: PaydaySettingsApi;
+  goals: GoalsApi;
+  spent: (payday: string) => Promise<number>;
   notes: Pick<NotesApi, "searchNotes">;
   briefing: () => Promise<string>;
   jobs: () => Promise<JobRun[]>;
   now?: () => Date;
 }): Handler {
   const now = deps.now ?? (() => new Date());
+  const paydays = createPaydayCommands(deps);
+  // Today's date in New Zealand, "YYYY-MM-DD".
+  const today = () =>
+    new Intl.DateTimeFormat("en-CA", { timeZone: "Pacific/Auckland" }).format(
+      now(),
+    );
   return async (input) => {
     const text = input.trim();
     if (text.length > MAX_LENGTH) return "That message is too long.";
@@ -123,6 +139,10 @@ export function createCommandHandler(deps: {
           ? `Budget for ${r.category} set to $${r.limit.toFixed(2)} a month.`
           : `Budget for ${r.category} changed from $${r.replaced.toFixed(2)} to $${r.limit.toFixed(2)} a month.`;
       }
+      case "/payday":
+        return paydays.payday(args, today());
+      case "/goal":
+        return paydays.goal(args);
       case "/notes": {
         if (rest === "") return "Use /notes followed by a few words.";
         // Search returns chunks, so one note can appear several times. Only

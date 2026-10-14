@@ -1,4 +1,6 @@
 import type { BudgetStatus } from "./budgets.js";
+import type { Goal } from "./goals.js";
+import { fortnightWindow, type Plan } from "./payday-plan.js";
 import type { Recurring } from "./insights.js";
 import type { CategorySpending, Spending } from "./read.js";
 
@@ -75,4 +77,49 @@ export function formatFreshness(at: Date | null, now: Date): string {
   );
   const age = hours < 48 ? `${hours}h ago` : `${Math.round(hours / 24)}d ago`;
   return `Bank data refreshed ${p.weekday} ${p.day} ${p.month}, ${p.hour}:${p.minute} (${age})`;
+}
+
+const usd = (cents: number) => `$${(cents / 100).toFixed(2)}`;
+
+export function formatGoals(goals: Goal[]): string {
+  if (goals.length === 0)
+    return "No goals yet. Use /goal add <name> <target> [date].";
+  const lines = goals.map((g) => {
+    const percent = Math.round((g.saved / g.target) * 100);
+    return `  ${g.name}: ${nzd(g.saved)} of ${nzd(g.target)} (${percent}%)${g.due ? `, due ${g.due}` : ""}, weight ${g.weight}`;
+  });
+  return `Goals:\n${lines.join("\n")}`;
+}
+
+// The payday message: what I spent against the target, and where the pay goes.
+// `payday` is the date the pay landed, "YYYY-MM-DD".
+export function formatPlan(plan: Plan, payday: string): string {
+  if (!plan.ready)
+    return `Payday plan: still to set: ${plan.missing.join(", ")}. Use /payday set <item> <amount>.`;
+  const { from, to } = fortnightWindow(payday);
+  const standing =
+    plan.standing === "under"
+      ? `${usd(plan.surplus)} under`
+      : plan.standing === "over"
+        ? `${usd(plan.over)} over`
+        : "on target";
+  const lines = [
+    `Payday plan for ${payday}`,
+    `Spent ${from} to ${to}: ${usd(plan.spent)} of a ${usd(plan.target)} target (${standing})`,
+    `Rent and bills: ${usd(plan.rent)}`,
+    `Savings: ${usd(plan.savings)}${plan.savings > plan.base.savings ? ` (usual ${usd(plan.base.savings)} plus ${usd(plan.savings - plan.base.savings)})` : ""}`,
+    `Investments: ${usd(plan.invest)}${plan.invest > plan.base.invest ? ` (usual ${usd(plan.base.invest)} plus ${usd(plan.invest - plan.base.invest)})` : ""}`,
+  ];
+  for (const g of plan.goals)
+    if (g.cents > 0)
+      lines.push(
+        `  ${g.name}: ${usd(g.cents)}${g.reaches ? " (reaches its target)" : ""}`,
+      );
+  if (plan.unallocated > 0)
+    lines.push(`Not going to a goal: ${usd(plan.unallocated)}`);
+  if (plan.shortfall > 0)
+    lines.push(
+      `The pay is ${usd(plan.shortfall)} short of rent and the usual savings and investments.`,
+    );
+  return lines.join("\n");
 }
