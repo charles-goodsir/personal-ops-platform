@@ -55,3 +55,17 @@ export {
 export { nextSlot, type Slot } from "./sync-schedule.js";
 export { refreshBankData, type RefreshResult } from "./refresh.js";
 export { checkBudgetAlerts } from "./budget-alerts.js";
+export {
+  createPaydaySettingsApi,
+  SETTING_ITEMS,
+  validDate,
+  type PaydaySettings,
+  type PaydaySettingsApi,
+  type SettingItem,
+} from "./payday-settings.js";
+export {
+  createGoalsApi,
+  normaliseName,
+  type Goal,
+  type GoalsApi,
+} from "./goals.js";
