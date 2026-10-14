@@ -1,5 +1,5 @@
 import { createTestDb, type Db } from "@ops/core";
-import { createBudgetsApi } from "@ops/finance";
+import { createGoalsApi, createPaydaySettingsApi } from "@ops/finance";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { loadDashboard } from "./data.js";
 
@@ -33,26 +33,33 @@ beforeAll(async () => {
        VALUES ($1, 'acc', $2::date + time '10:59', 'SHOP', $3, 'EFTPOS', $4, now())`,
       [`t${i}`, date, amount, category],
     );
-  await createBudgetsApi(db).setBudget("Groceries", 300);
+  const settings = createPaydaySettingsApi(db);
+  await settings.setAmount("spending", 400);
+  await settings.setPayday("2026-10-02");
+  await createGoalsApi(db).addGoal({ name: "Holiday", target: 3000 });
 });
 afterAll(() => testDb?.drop());
 
 const run = test.skipIf(!process.env.DATABASE_URL);
 
-run("loads the month, budgets, a six month trend and every job", async () => {
-  const d = await loadDashboard(getDb(), now);
-  expect(d.month.total).toBe(210);
-  expect(d.budgets).toEqual([
-    { category: "Groceries", limit: 300, spent: 150, percent: 50 },
-  ]);
-  expect(d.trend).toEqual([
-    { label: "May", total: 90, current: false },
-    { label: "Jun", total: 0, current: false },
-    { label: "Jul", total: 0, current: false },
-    { label: "Aug", total: 250, current: false },
-    { label: "Sep", total: 400, current: false },
-    { label: "Oct", total: 210, current: true },
-  ]);
-  expect(d.jobs.map((j) => j.job)).toContain("finance-sync");
-  expect(d.freshness).toBe("Bank data: refresh time unknown");
-});
+run(
+  "loads the month, the fortnight, goals, a six month trend and every job",
+  async () => {
+    const d = await loadDashboard(getDb(), now);
+    expect(d.month.total).toBe(210);
+    expect(d.fortnight).toMatchObject({ payday: "2026-10-02", spent: 210 });
+    expect(d.goals).toEqual([
+      { name: "Holiday", target: 3000, saved: 0, weight: 1, due: null },
+    ]);
+    expect(d.trend).toEqual([
+      { label: "May", total: 90, current: false },
+      { label: "Jun", total: 0, current: false },
+      { label: "Jul", total: 0, current: false },
+      { label: "Aug", total: 250, current: false },
+      { label: "Sep", total: 400, current: false },
+      { label: "Oct", total: 210, current: true },
+    ]);
+    expect(d.jobs.map((j) => j.job)).toContain("finance-sync");
+    expect(d.freshness).toBe("Bank data: refresh time unknown");
+  },
+);

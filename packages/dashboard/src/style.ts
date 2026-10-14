@@ -1,5 +1,5 @@
 // Colours are the validated reference palette: one accent hue, a gray for
-// everything that should recede, and the status colours for budgets and jobs.
+// everything that should recede, and the status colours for the meter and jobs.
 // Status always comes with a word and a symbol, never colour alone.
 export const CSS = `
 :root {

@@ -103,7 +103,7 @@ beforeAll(async () => {
     );
     let n = 0;
     // Each hostile text becomes a monthly subscription, which is where a payee
-    // name is shown, and one spending category and one budget name as well.
+    // name is shown, and one spending category and one goal name as well.
     for (const text of [...markup, ...numbers])
       for (const month of ["06", "07", "08", "09", "10"])
         await db.query(
@@ -117,10 +117,10 @@ beforeAll(async () => {
             month === "10" && markup.includes(text) ? text : "Other",
           ],
         );
-    await db.query(
-      "INSERT INTO budgets (category, monthly_limit) VALUES ($1, 10)",
-      [markup[0]],
-    );
+    // A goal name that the bot would refuse, put in directly, as the worst case.
+    await db.query("INSERT INTO goals (name, target) VALUES ($1, 10)", [
+      markup[0],
+    ]);
   }
   server = createServer(
     createDashboardHandler({
@@ -142,7 +142,7 @@ afterAll(async () => {
 });
 
 needsDb(
-  "D1: hostile text in a payee, a category and a budget name is never markup",
+  "D1: hostile text in a payee, a category and a goal name is never markup",
   async () => {
     const r = await get("/");
     expect(r.status).toBe(200);

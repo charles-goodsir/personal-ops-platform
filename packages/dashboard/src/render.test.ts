@@ -19,10 +19,22 @@ const base = (): Dashboard => ({
     ],
     uncategorised: 0,
   },
-  budgets: [
-    { category: "Groceries", limit: 600, spent: 800, percent: 133 },
-    { category: "Eating out", limit: 500, spent: 434.5, percent: 87 },
-    { category: "Travel", limit: 100, spent: 10, percent: 10 },
+  fortnight: {
+    payday: "2026-10-13",
+    spent: 533.35,
+    target: 666.69,
+    percent: 80,
+    daysLeft: 12,
+  },
+  goals: [
+    {
+      name: "Holiday fund",
+      target: 3000,
+      saved: 250,
+      weight: 3,
+      due: "2027-06-01",
+    },
+    { name: "Emergency fund", target: 1000, saved: 1000, weight: 1, due: null },
   ],
   trend: ["May", "Jun", "Jul", "Aug", "Sep", "Oct"].map((label, i) => ({
     label,
@@ -52,15 +64,28 @@ const base = (): Dashboard => ({
 const html = (d = base(), hidePayees = false) =>
   renderDashboard(d, { role: "dashboard_ro", hidePayees });
 
-test("shows the month, budgets with words as well as colour, and the role", () => {
+test("shows the month, the fortnight meter and goals with words as well as colour, and the role", () => {
   const page = html();
   expect(page).toContain("$1,234.50");
-  expect(page).toContain("▲ Over");
+  expect(page).toContain("$533.35 of $666.69 (80%)");
   expect(page).toContain("● Near limit");
-  expect(page).toContain("✓ On track");
+  expect(page).toContain("12 days to payday");
+  expect(page).toContain("Holiday fund");
+  expect(page).toContain("$250.00 of $3,000.00 (8%), due 2027-06-01");
+  expect(page).toContain("✓ Reached");
   expect(page).toContain("Database role: dashboard_ro");
   expect(page).toContain("Bank data refreshed Tue 13 Oct, 11:17 (23h ago)");
-  // An over-budget meter never draws wider than its track.
+});
+
+test("an over-target meter says over and never draws wider than its track", () => {
+  const d = base();
+  d.fortnight = {
+    ...(d.fortnight as NonNullable<Dashboard["fortnight"]>),
+    spent: 900,
+    percent: 135,
+  };
+  const page = html(d);
+  expect(page).toContain("▲ Over");
   expect(page).toContain('class="fill-crit" width="100%"');
 });
 
@@ -79,7 +104,7 @@ test("digits in a payee are masked, and DASHBOARD_HIDE_PAYEES hides the name", (
   expect(hidden).toContain("Subscription 1");
 });
 
-test("D1: markup in a payee, a category or a job name is escaped, never run", () => {
+test("D1: markup in a payee, a category, a goal name or a job name is escaped, never run", () => {
   const d = base();
   const bad = `<script>alert(1)</script><img src=x onerror=alert(1)>"'&`;
   d.subscriptions[0] = {
@@ -87,7 +112,7 @@ test("D1: markup in a payee, a category or a job name is escaped, never run", ()
     payee: bad,
   };
   d.month.byCategory[0] = { category: bad, spent: 1, count: 1 };
-  d.budgets[0] = { category: bad, limit: 1, spent: 1, percent: 100 };
+  d.goals[0] = { name: bad, target: 1, saved: 1, weight: 1, due: bad };
   const page = html(d);
   expect(page).not.toContain("<script>");
   expect(page).not.toContain("<img");
@@ -103,13 +128,15 @@ test("the page has no inline style, no script and no external link", () => {
   expect(page).not.toMatch(/https?:\/\//);
 });
 
-test("an empty month and no budgets still render", () => {
+test("an empty month, no target and no goals still render", () => {
   const d = base();
   d.month.byCategory = [];
-  d.budgets = [];
+  d.fortnight = null;
+  d.goals = [];
   d.subscriptions = [];
   const page = html(d);
   expect(page).toContain("Nothing spent yet this month.");
-  expect(page).toContain("No budgets set.");
+  expect(page).toContain("No spending target set.");
+  expect(page).toContain("No goals yet.");
   expect(page).toContain("No recurring charges found.");
 });
