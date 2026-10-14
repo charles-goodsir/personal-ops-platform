@@ -1,4 +1,4 @@
-// A read-only web page for my spending, budgets and job health. It listens on
+// A read-only web page for my spending, goals and job health. It listens on
 // 127.0.0.1 and is reached through an SSH tunnel. Logs counts and errors,
 // never request paths or the password.
 import { createServer } from "node:http";

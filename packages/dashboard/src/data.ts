@@ -6,12 +6,16 @@ import {
   type JobHealth,
 } from "@ops/core";
 import {
-  createBudgetsApi,
   createFinanceApi,
+  createGoalsApi,
+  createPaydaySettingsApi,
+  currentMeter,
   formatFreshness,
   dateRange,
+  nzDate,
   resolvePeriod,
-  type BudgetStatus,
+  type Goal,
+  type Meter,
   type Recurring,
   type Spending,
 } from "@ops/finance";
@@ -19,7 +23,8 @@ import {
 export type Dashboard = {
   freshness: string; // when the bank data was last pulled
   month: Spending;
-  budgets: BudgetStatus[];
+  fortnight: Meter | null; // null until a payday and spending target are set
+  goals: Goal[];
   trend: { label: string; total: number; current: boolean }[]; // oldest first
   subscriptions: Recurring[];
   jobs: { job: string; health: JobHealth }[];
@@ -49,10 +54,13 @@ export async function loadDashboard(
     return { first, range: dateRange(iso(first), iso(last)) };
   });
 
-  const [month, budgets, past, subscriptions, runs, refreshed] =
+  const [month, fortnight, goals, past, subscriptions, runs, refreshed] =
     await Promise.all([
       finance.getSpending(thisMonth),
-      createBudgetsApi(db).budgetStatus(thisMonth),
+      createPaydaySettingsApi(db)
+        .getSettings()
+        .then((settings) => currentMeter(db, settings, nzDate(now))),
+      createGoalsApi(db).listGoals(),
       Promise.all(earlier.map((e) => finance.getSpending(e.range))),
       finance.listSubscriptions(false, now),
       listJobRuns(db),
@@ -61,7 +69,8 @@ export async function loadDashboard(
   return {
     freshness: formatFreshness(refreshed, now),
     month,
-    budgets,
+    fortnight,
+    goals,
     trend: [
       ...earlier.map((e, i) => ({
         label: SHORT[e.first.getUTCMonth()] as string,

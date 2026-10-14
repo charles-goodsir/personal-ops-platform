@@ -30,16 +30,38 @@ function status(percent: number) {
   return `<span class="ok">✓ On track</span>`;
 }
 
-function budgets(d: Dashboard) {
-  if (d.budgets.length === 0)
-    return `<p class="muted">No budgets set. Send /budget set &lt;category&gt; &lt;amount&gt; to the bot.</p>`;
-  return d.budgets
-    .map(
-      (b) => `<div class="row">
-<div class="row-head"><span>${esc(b.category)}</span><span class="muted">${nzd(b.spent)} of ${nzd(b.limit)} (${esc(b.percent)}%) ${status(b.percent)}</span></div>
-${meter(b.percent)}
-</div>`,
-    )
+function fortnight(d: Dashboard) {
+  const m = d.fortnight;
+  if (m === null)
+    return `<p class="muted">No spending target set. Send /payday set spending &lt;amount&gt; and /payday set payday &lt;date&gt; to the bot.</p>`;
+  return `<div class="row">
+<div class="row-head"><span>Since payday</span><span class="muted">${nzd(m.spent)} of ${nzd(m.target)} (${esc(m.percent)}%) ${status(m.percent)}</span></div>
+${meter(m.percent)}
+<p class="muted">${esc(m.daysLeft)} days to payday</p>
+</div>`;
+}
+
+// Progress towards a goal: the same track as the meter, but filling up is good,
+// so there is no warning colour.
+function progress(percent: number) {
+  const width = Math.min(100, Math.max(0, percent));
+  return `<svg class="meter" width="100%" height="10" role="img" aria-label="${esc(percent)} percent saved">
+<rect class="track" width="100%" height="10" rx="5"/>
+<rect class="bar" width="${width}%" height="10" rx="5"/>
+</svg>`;
+}
+
+function goals(d: Dashboard) {
+  if (d.goals.length === 0)
+    return `<p class="muted">No goals yet. Send /goal add &lt;name&gt; &lt;target&gt; to the bot.</p>`;
+  return d.goals
+    .map((g) => {
+      const percent = Math.round((g.saved / g.target) * 100);
+      return `<div class="row">
+<div class="row-head"><span>${esc(g.name)}</span><span class="muted">${nzd(g.saved)} of ${nzd(g.target)} (${esc(percent)}%)${g.due ? `, due ${esc(g.due)}` : ""}${percent >= 100 ? ` <span class="ok">✓ Reached</span>` : ""}</span></div>
+${progress(percent)}
+</div>`;
+    })
     .join("\n");
 }
 
@@ -157,8 +179,11 @@ export function renderDashboard(
 <div class="tile"><span class="label">Income</span><span class="value">${nzd(d.month.income)}</span></div>
 <div class="tile"><span class="label">Invested</span><span class="value">${nzd(d.month.invested)}</span></div>
 </section>
-<section><h2>Budgets</h2>
-${budgets(d)}
+<section><h2>Spending this fortnight</h2>
+${fortnight(d)}
+</section>
+<section><h2>Goals</h2>
+${goals(d)}
 </section>
 <section><h2>Spending by category</h2>
 ${categories(d)}
