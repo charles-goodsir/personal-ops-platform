@@ -85,3 +85,4 @@ export {
   type Plan,
 } from "./payday-plan.js";
 export { sendPaydayMessage, type PaydayResult } from "./payday-message.js";
+export { currentMeter, type Meter } from "./spending-meter.js";
