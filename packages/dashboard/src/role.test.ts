@@ -32,14 +32,13 @@ const db = () => {
 };
 
 needsDb(
-  "D4: the connection runs as dashboard_ro and reads the six tables",
+  "D4: the connection runs as dashboard_ro and reads the five tables",
   async () => {
     const { rows } = await db().query("SELECT current_user AS u");
     expect(rows[0]?.u).toBe("dashboard_ro");
     for (const table of [
       "transactions",
       "accounts",
-      "budgets",
       "job_runs",
       "payday_settings",
       "goals",
@@ -50,8 +49,6 @@ needsDb(
 
 needsDb("D4: it cannot write, delete, truncate or create", async () => {
   for (const sql of [
-    "INSERT INTO budgets (category, monthly_limit) VALUES ('Groceries', 1)",
-    "UPDATE budgets SET monthly_limit = 1",
     "DELETE FROM transactions",
     "TRUNCATE accounts",
     "UPDATE job_runs SET consecutive_failures = 0",

@@ -100,7 +100,7 @@ services:
       FINANCE_HISTORY_START: ${FINANCE_HISTORY_START:-2026-01-01}
       FINANCE_SYNC_TIME: ${FINANCE_SYNC_TIME:-08:00}
       FINANCE_NIGHT_SYNC_TIME: ${FINANCE_NIGHT_SYNC_TIME-00:05}
-      # Budget alerts go to the same Telegram chat as the briefing.
+      # Spending alerts and the payday message go to the same Telegram chat as the briefing.
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?set in .env}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:?set in .env}
     read_only: true
@@ -235,7 +235,7 @@ services:
       ollama-pull:
         condition: service_completed_successfully
 
-  # Read-only web page for spending, budgets and job health. Published on
+  # Read-only web page for spending, goals and job health. Published on
   # 127.0.0.1 only, so it is reached through an SSH tunnel: ssh -L 8081:localhost:3100.
   dashboard:
     image: personal-ops:local

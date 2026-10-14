@@ -39,7 +39,6 @@ export {
   type TxRow,
 } from "./read.js";
 export {
-  formatBudgets,
   formatFreshness,
   formatGoals,
   formatPlan,
@@ -47,16 +46,8 @@ export {
   formatSpending,
   formatSubscriptions,
 } from "./format.js";
-export {
-  BUDGET_CATEGORIES,
-  createBudgetsApi,
-  type Budget,
-  type BudgetsApi,
-  type BudgetStatus,
-} from "./budgets.js";
 export { nextSlot, type Slot } from "./sync-schedule.js";
 export { refreshBankData, type RefreshResult } from "./refresh.js";
-export { checkBudgetAlerts } from "./budget-alerts.js";
 export {
   createPaydaySettingsApi,
   SETTING_ITEMS,
