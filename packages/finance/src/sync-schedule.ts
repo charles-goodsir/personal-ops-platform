@@ -1,6 +1,6 @@
 import { nextRun } from "@ops/core";
 
-// A time of day (NZ) the sync runs at, and whether it may send budget alerts.
+// A time of day (NZ) the sync runs at, and whether it may send alerts.
 export type Slot = { time: string; alerts: boolean };
 
 // The soonest of the daily slots after `now`.
