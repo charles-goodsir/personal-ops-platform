@@ -69,3 +69,14 @@ export {
   type Goal,
   type GoalsApi,
 } from "./goals.js";
+export {
+  allocateToGoals,
+  computePlan,
+  discretionary,
+  fortnightSpent,
+  fortnightWindow,
+  lastPayday,
+  RENT_BILLS_CATEGORIES,
+  type GoalShare,
+  type Plan,
+} from "./payday-plan.js";
