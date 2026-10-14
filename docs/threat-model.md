@@ -126,6 +126,18 @@ Each row has a test ID. Tests marked **to test** are hypotheses, not findings. A
 | D8  | T      | A `/budget set` with a category off the list, a negative or huge amount, or odd digits | The category is checked against the list and the amount against a strict pattern, in the bot and again in the API | Tested: D8. Passed                                                                                     |
 | D9  | D      | The same alert is sent again after a restart or a second sync                          | The sent level is stored per budget and month, and saved after the send                                           | Tested: D9, in the alert tests. Passed                                                                 |
 
+### E. The payday plan and savings goals (planned, [ADR 12](adr/0012-payday-plan-and-savings-goals.md))
+
+| ID  | STRIDE | Threat                                                                                               | What stops it today                                                                                           | Gap or to test                                                                                                             |
+| --- | ------ | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| E1  | T      | A setting or goal amount that is huge, negative, `NaN`, in exponent form or in other digits          | Not built yet. Plan: the same strict amount pattern as `/budget`, bounded, and again in the API and the table | **To test:** `0`, `-5`, `1e9`, `NaN`, Arabic-Indic and fullwidth digits, three decimals, a very long number                |
+| E2  | T, E   | A goal name with a newline, control characters or markup forges a line in the list or the page       | Not built yet. Plan: names of 1 to 40 letters, digits, spaces and a few marks, escaped on the page            | **To test:** a newline plus a fake line, a script tag, quotes, a name that is all spaces, two names that differ by case    |
+| E3  | T      | The split adds up wrongly: rounding, an overspent fortnight, a goal already at its target            | Not built yet. Plan: whole cents, and the parts always add up to the surplus                                  | **To test:** the parts sum to the surplus for many inputs, overspending adds nothing, a full goal gets nothing             |
+| E4  | R, D   | The message goes out twice, or never, after a restart, a failed send, a clock change or a missed pay | Not built yet. Plan: the last covered payday is stored and the date is worked out in NZ time                  | **To test:** two syncs on one Wednesday, a restart between them, a failed send retried, the morning daylight saving starts |
+| E5  | S, E   | A stranger or another chat changes my settings or goals                                              | The bot answers only my private chat, by chat id and sender id (C1)                                           | **To test:** the new commands inherit it: forged updates carrying `/payday set` and `/goal add`                            |
+| E6  | I      | The message or the page shows more than it should: the pay, goal names                               | Telegram already carries my totals. The page is behind the password and the read-only role                    | **Accepted:** Telegram now sees my pay and goal names. **To test:** the page escapes goal names                            |
+| E7  | E      | Removing the budgets leaves the dashboard role with access it no longer needs                        | Not built yet. Plan: the migration revokes the grant and grants only the two new tables                       | **To test:** as the role, the dropped table is gone and only the granted tables can be read                                |
+
 ## Threats I am not testing in this phase
 
 - **The host and the network:** SSH, the firewall, disk encryption and the router are covered by the earlier hardening and risks R7, R15 and R17.
@@ -149,7 +161,8 @@ Each row has a test ID. Tests marked **to test** are hypotheses, not findings. A
 
 ## Review
 
-| Date        | Reviewer | Result                                                                                               |
-| ----------- | -------- | ---------------------------------------------------------------------------------------------------- |
-| 12 Oct 2026 | Me       | Approved by merging the draft. A8 and A9 decided in [ADR 10](adr/0010-threat-model-decisions.md)     |
-| 13 Oct 2026 | Me       | Section D added for the budgets and dashboard phase, see [ADR 11](adr/0011-budgets-and-dashboard.md) |
+| Date        | Reviewer | Result                                                                                                         |
+| ----------- | -------- | -------------------------------------------------------------------------------------------------------------- |
+| 12 Oct 2026 | Me       | Approved by merging the draft. A8 and A9 decided in [ADR 10](adr/0010-threat-model-decisions.md)               |
+| 13 Oct 2026 | Me       | Section D added for the budgets and dashboard phase, see [ADR 11](adr/0011-budgets-and-dashboard.md)           |
+| 14 Oct 2026 | Me       | Section E added for the payday plan and savings goals, see [ADR 12](adr/0012-payday-plan-and-savings-goals.md) |
