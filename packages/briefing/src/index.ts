@@ -1,5 +1,5 @@
 export { runBriefing, type Section } from "./runner.js";
-export { budgetsSection } from "./budgets-section.js";
+export { spendingSection } from "./spending-section.js";
 export { financeSection } from "./finance-section.js";
 export { notesSection } from "./notes-section.js";
 export { weatherSection } from "./weather-section.js";
