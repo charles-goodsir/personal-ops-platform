@@ -1,6 +1,6 @@
 // Syncs accounts then transactions from Akahu, then categorises: my rules
 // first, the model for whatever is left. At startup, daily at FINANCE_SYNC_TIME
-// (NZ), and quietly (no budget alerts) at FINANCE_NIGHT_SYNC_TIME.
+// (NZ), and quietly (no alerts) at FINANCE_NIGHT_SYNC_TIME.
 // `--once` runs a single sync and exits. Logs counts only, never transactions.
 import {
   createDb,
@@ -12,7 +12,6 @@ import {
 import { syncAccounts } from "./accounts.js";
 import { createAkahuClient } from "./akahu.js";
 import { applyRules, categoriseWithModel } from "./categorise.js";
-import { checkBudgetAlerts } from "./budget-alerts.js";
 import { createClaudeClassifier } from "./claude.js";
 import { loadFinanceConfig } from "./config.js";
 import { createGoalsApi } from "./goals.js";
@@ -20,6 +19,7 @@ import { sendPaydayMessage } from "./payday-message.js";
 import { fortnightSpent, paySeen } from "./payday-plan.js";
 import { createPaydaySettingsApi } from "./payday-settings.js";
 import { refreshBankData } from "./refresh.js";
+import { checkSpendingAlert } from "./spending-alert.js";
 import { nextSlot, type Slot } from "./sync-schedule.js";
 import { syncTransactions } from "./transactions.js";
 
@@ -53,7 +53,7 @@ const sendAlert =
         chatId: finance.TELEGRAM_CHAT_ID,
       })
     : undefined;
-if (!sendAlert) logger.warn("Telegram not set, skipping budget alerts");
+if (!sendAlert) logger.warn("Telegram not set, skipping alerts");
 
 const paydaySettings = createPaydaySettingsApi(db);
 const paydayGoals = createGoalsApi(db);
@@ -63,10 +63,14 @@ const paydayGoals = createGoalsApi(db);
 async function alerts() {
   if (!sendAlert) return;
   try {
-    const sent = await checkBudgetAlerts(db, sendAlert);
-    if (sent) logger.info({ budgets: sent }, "budget alert sent");
+    const level = await checkSpendingAlert(
+      db,
+      await paydaySettings.getSettings(),
+      sendAlert,
+    );
+    if (level) logger.info({ level }, "spending alert sent");
   } catch {
-    logger.warn("budget alert failed");
+    logger.warn("spending alert failed");
   }
   try {
     const result = await sendPaydayMessage({
