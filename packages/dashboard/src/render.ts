@@ -30,10 +30,32 @@ function status(percent: number) {
   return `<span class="ok">✓ On track</span>`;
 }
 
+// The settled spending as a solid bar, and the pending charges after it in a
+// lighter one, both inside the same track. Together they never draw past it.
+function fortnightMeter(settled: number, combined: number) {
+  const fill = combined >= 100 ? "crit" : combined >= 80 ? "warn" : "ok";
+  const solid = Math.min(100, Math.max(0, settled));
+  const extra = Math.min(100 - solid, Math.max(0, combined - settled));
+  return `<svg class="meter" width="100%" height="10" role="img" aria-label="${esc(settled)} percent settled, ${esc(Math.max(0, combined - settled))} percent more pending">
+<rect class="track" width="100%" height="10" rx="5"/>
+<rect class="fill-${fill}" width="${solid}%" height="10" rx="5"/>
+<rect class="bar-muted" x="${solid}%" width="${extra}%" height="10" rx="5"/>
+</svg>`;
+}
+
 function fortnight(d: Dashboard) {
   const m = d.fortnight;
   if (m === null)
     return `<p class="muted">No spending target set. Send /payday set spending &lt;amount&gt; and /payday set payday &lt;date&gt; to the bot.</p>`;
+  const p = m.pending;
+  // With charges still pending, the headline is an estimate of settled plus
+  // pending, and the split is written out under the bar.
+  if (p && p.count > 0)
+    return `<div class="row">
+<div class="row-head"><span>Since payday</span><span class="muted">about ${nzd(m.spent + p.spent)} of ${nzd(m.target)} (${esc(p.percent)}%) ${status(p.percent)}</span></div>
+${fortnightMeter(m.percent, p.percent)}
+<p class="muted">${nzd(m.spent)} settled, about ${nzd(p.spent)} pending (${esc(p.count)} ${p.count === 1 ? "charge" : "charges"}), ${esc(m.daysLeft)} days to payday</p>
+</div>`;
   return `<div class="row">
 <div class="row-head"><span>Since payday</span><span class="muted">${nzd(m.spent)} of ${nzd(m.target)} (${esc(m.percent)}%) ${status(m.percent)}</span></div>
 ${meter(m.percent)}

@@ -141,3 +141,35 @@ test("an empty month, no target and no goals still render", () => {
   expect(page).toContain("No goals yet.");
   expect(page).toContain("No recurring charges found.");
 });
+
+test("pending charges show beside the settled figure: an estimate, the split in words, and a lighter segment that never passes the track", () => {
+  const d = base();
+  d.fortnight = {
+    payday: "2026-10-13",
+    spent: 49.8,
+    target: 666.69,
+    percent: 7,
+    daysLeft: 11,
+    pending: { spent: 606.48, count: 4, percent: 98 },
+  };
+  const page = html(d);
+  expect(page).toContain("about $656.28 of $666.69 (98%)");
+  expect(page).toContain("● Near limit");
+  expect(page).toContain(
+    "$49.80 settled, about $606.48 pending (4 charges), 11 days to payday",
+  );
+  expect(page).toContain('class="fill-warn" width="7%"');
+  expect(page).toContain('class="bar-muted" x="7%" width="91%"');
+  d.fortnight = {
+    ...d.fortnight,
+    pending: { spent: 900, count: 1, percent: 142 },
+  };
+  const over = html(d);
+  expect(over).toContain("▲ Over");
+  expect(over).toContain("(1 charge)");
+  expect(over).toContain('class="fill-crit" width="7%"');
+  expect(over).toContain('class="bar-muted" x="7%" width="93%"');
+  // No pending charges, or none counted: the page reads as it did before.
+  d.fortnight = { ...d.fortnight, pending: { spent: 0, count: 0, percent: 7 } };
+  expect(html(d)).not.toContain("pending (");
+});

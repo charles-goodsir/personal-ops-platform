@@ -117,6 +117,17 @@ beforeAll(async () => {
             month === "10" && markup.includes(text) ? text : "Other",
           ],
         );
+    // A fortnight with pending charges whose descriptions are hostile. They are
+    // stored for my rules and must never reach the page, not even escaped.
+    await db.query(
+      "INSERT INTO payday_settings (id, spending_target, pay_anchor) VALUES (true, 400, '2026-10-13')",
+    );
+    for (const text of [...markup, ...numbers])
+      await db.query(
+        `INSERT INTO pending_transactions (date, description, amount, type, fetched_at)
+         VALUES ('2026-10-14T20:00:00Z', $1, -10, 'EFTPOS', '2026-10-14T17:00:00Z')`,
+        [`PENDINGCANARY ${text}`],
+      );
     // A goal name that the bot would refuse, put in directly, as the worst case.
     await db.query("INSERT INTO goals (name, target) VALUES ($1, 10)", [
       markup[0],
@@ -156,6 +167,21 @@ needsDb(
     // If something did slip through, the policy would still stop it running.
     expect(r.head).toContain("default-src 'none'");
     expect(r.head).not.toContain("unsafe-inline");
+  },
+);
+
+needsDb(
+  "E8: pending charges show as a figure, and their descriptions never reach the page",
+  async () => {
+    const r = await get("/");
+    expect(r.status).toBe(200);
+    const n = markup.length + numbers.length;
+    expect(r.body).toContain(`pending (${n} charges)`);
+    // The canary is on every pending description. The same hostile texts do
+    // appear on the page as payee and category names, so only the canary
+    // proves the pending descriptions stay out.
+    expect(r.body).not.toContain("PENDINGCANARY");
+    expect(unknownMarkup(r.body)).toEqual([]);
   },
 );
 
