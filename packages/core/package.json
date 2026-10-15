@@ -18,6 +18,7 @@
     "@types/pg": "8.23.1"
   },
   "dependencies": {
+    "minimist": "1.2.0",
     "node-pg-migrate": "9.0.0",
     "pg": "8.23.1",
     "pino": "10.4.0",
