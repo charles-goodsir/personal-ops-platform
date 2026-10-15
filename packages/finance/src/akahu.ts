@@ -50,6 +50,20 @@ const transaction = z.object({
 
 export type AkahuTransaction = z.infer<typeof transaction>;
 
+// Pending charges have no id and no category, and Akahu says they change. Only
+// these four fields are read: meta is skipped for the same reason as above.
+const pendingTransaction = z.object({
+  date: z.string().refine((d) => !Number.isNaN(Date.parse(d))),
+  description: z.string(),
+  amount: z.number(),
+  type: z.string(),
+});
+
+export type AkahuPending = z.infer<typeof pendingTransaction>;
+
+// One response with no cursor. A response this long is not mine.
+const MAX_PENDING = 1000;
+
 const transactionsPage = z.object({
   items: z.array(transaction),
   cursor: z.object({ next: z.string().nullable() }).optional(),
@@ -103,6 +117,17 @@ export function createAkahuClient(opts: {
     // work later, so the caller watches `refreshed` on the accounts.
     async refresh(): Promise<void> {
       await get("refresh", {}, "POST");
+    },
+
+    // Charges the bank has not settled yet. Akahu offers no paging and no ids.
+    async listPendingTransactions(): Promise<AkahuPending[]> {
+      const { items } = z
+        .object({ items: z.array(pendingTransaction) })
+        .parse(await get("transactions/pending"));
+      if (items.length > MAX_PENDING) {
+        throw new Error("Akahu pending failed: too many items");
+      }
+      return items;
     },
 
     // Settled transactions with date in (start, end]: Akahu's start is

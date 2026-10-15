@@ -59,6 +59,22 @@ needsDb("D4: it cannot write, delete, truncate or create", async () => {
     await expect(db().query(sql), sql).rejects.toThrow(/permission denied/);
 });
 
+needsDb(
+  "E8: it reads the pending amounts but never the description",
+  async () => {
+    await db().query(
+      "SELECT date, amount, type, category, fetched_at FROM pending_transactions",
+    );
+    for (const sql of [
+      "SELECT description FROM pending_transactions",
+      "SELECT * FROM pending_transactions",
+      "INSERT INTO pending_transactions (date, description, amount, type, fetched_at) VALUES (now(), 'x', 1, 'EFTPOS', now())",
+      "DELETE FROM pending_transactions",
+    ])
+      await expect(db().query(sql), sql).rejects.toThrow(/permission denied/);
+  },
+);
+
 needsDb("D4: it cannot read tables the page does not need", async () => {
   for (const table of ["category_rules", "notes", "chunks"])
     await expect(db().query(`SELECT 1 FROM ${table}`), table).rejects.toThrow(
