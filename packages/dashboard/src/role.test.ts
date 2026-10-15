@@ -1,4 +1,5 @@
 import { createDb, createTestDb, type Db } from "@ops/core";
+import { currentMeter } from "@ops/finance";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { readOnlyUrl } from "./config.js";
 
@@ -72,6 +73,31 @@ needsDb(
       "DELETE FROM pending_transactions",
     ])
       await expect(db().query(sql), sql).rejects.toThrow(/permission denied/);
+  },
+);
+
+needsDb(
+  "E8: the meter's pending query runs as dashboard_ro, which cannot read the description",
+  async () => {
+    await (testDb?.db as Db).query(
+      `INSERT INTO pending_transactions (date, description, amount, type, fetched_at)
+       VALUES ('2026-10-14T20:00:00Z', 'X', -42, 'EFTPOS', '2026-10-15T01:00:00Z')`,
+    );
+    const settings = {
+      pay: null,
+      rent: null,
+      savings: null,
+      invest: null,
+      spending: 400,
+      payday: "2026-10-13",
+    };
+    const meter = await currentMeter(
+      db(),
+      settings,
+      "2026-10-15",
+      new Date("2026-10-15T02:00:00Z"),
+    );
+    expect(meter?.pending).toEqual({ spent: 42, count: 1, percent: 10 });
   },
 );
 
