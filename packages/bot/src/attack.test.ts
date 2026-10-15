@@ -285,6 +285,44 @@ test.each([
   },
 );
 
+test.each([
+  "/payday set pay 100 rent -5",
+  "/payday set pay 100 salary 5",
+  "/payday set pay 100 rent",
+  "/payday set pay 1e3 rent 300",
+  "/payday set pay 100\n/payday set rent 1",
+  "/payday set pay 100 payday tomorrow",
+  "/payday set pay 100 rent \u0663\u0660\u0660",
+  "/payday set pay 100 rent 300 constructor 5",
+])("E1: %j in one message saves none of its pairs", async (text) => {
+  const { handle, payday } = commands();
+  const reply = await handle(text);
+  expect(typeof reply).toBe("string");
+  expect(reply.length).toBeLessThan(4000);
+  expect(payday.setAmount).not.toHaveBeenCalled();
+  expect(payday.setPayday).not.toHaveBeenCalled();
+});
+
+test("E5: a stranger's /payday set and /goal add, sent through the real command handler, change nothing", async () => {
+  const { handle, payday, goals } = commands();
+  const { bot, sent } = setup(vi.fn(handle));
+  await bot.process([
+    message(1, { text: "/payday set pay 1", from: { id: 7 } }),
+    message(2, {
+      text: "/goal add Holiday 100",
+      chat: { id: 7, type: "private" },
+      from: { id: 7 },
+    }),
+    message(3, {
+      text: "/payday set pay 1 rent 1",
+      chat: { id: 42, type: "group" },
+    }),
+  ]);
+  expect(sent).toEqual([]);
+  expect(payday.setAmount).not.toHaveBeenCalled();
+  expect(goals.addGoal).not.toHaveBeenCalled();
+});
+
 test("C2: a message of 100 characters is handled and 101 is refused", async () => {
   const { handle, searchNotes } = commands();
   await handle("/notes " + "a".repeat(93));

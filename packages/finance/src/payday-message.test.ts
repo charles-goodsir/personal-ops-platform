@@ -187,3 +187,54 @@ needsDb(
     expect(await api.lastSent()).toBe("2026-10-27");
   },
 );
+
+// E4 against the real table: the stored date is what stops a repeat, so it
+// has to survive a restart, which a new set of objects over the same database
+// stands in for.
+needsDb(
+  "E4: two syncs on one morning, and a restart between them, send the message once; a failed send is tried again",
+  async () => {
+    const make = () => {
+      const db = getDb();
+      const send = vi.fn<(text: string) => Promise<void>>(async () => {});
+      return {
+        send,
+        run: (now: string) =>
+          sendPaydayMessage(
+            {
+              settings: createPaydaySettingsApi(db),
+              goals: { listGoals: async () => [] },
+              spent: async () => 350,
+              paySeen: async () => true,
+              send,
+            },
+            new Date(now),
+          ),
+      };
+    };
+    const api = createPaydaySettingsApi(getDb());
+    for (const [item, amount] of [
+      ["pay", 1000],
+      ["rent", 300],
+      ["savings", 200],
+      ["invest", 50],
+    ] as const)
+      await api.setAmount(item, amount);
+    await api.setPayday("2026-10-13");
+
+    const failing = make();
+    failing.send.mockRejectedValueOnce(new Error("telegram down"));
+    await expect(failing.run(morning("2026-10-14"))).rejects.toThrow();
+    expect(await api.lastSent()).toBeNull();
+
+    const first = make();
+    expect(await first.run(morning("2026-10-14"))).toBe("sent");
+    expect(await first.run(morning("2026-10-14"))).toBe("already sent");
+    const restarted = make();
+    expect(await restarted.run(morning("2026-10-14"))).toBe("already sent");
+    expect(await restarted.run(morning("2026-10-15"))).toBe("already sent");
+    expect(first.send).toHaveBeenCalledTimes(1);
+    expect(restarted.send).not.toHaveBeenCalled();
+    expect(await api.lastSent()).toBe("2026-10-13");
+  },
+);
