@@ -18,6 +18,7 @@ import { createGoalsApi } from "./goals.js";
 import { sendPaydayMessage } from "./payday-message.js";
 import { fortnightSpent, paySeen } from "./payday-plan.js";
 import { createPaydaySettingsApi } from "./payday-settings.js";
+import { syncPending } from "./pending.js";
 import { refreshBankData } from "./refresh.js";
 import { checkSpendingAlert } from "./spending-alert.js";
 import { nextSlot, type Slot } from "./sync-schedule.js";
@@ -107,6 +108,11 @@ function sync(withAlerts = true) {
       { accounts, ...transactions, rules, model },
       "finance sync complete",
     );
+    // A bonus like the refresh: a failure here never fails the sync.
+    const pending = await syncPending(db, akahu);
+    if ("error" in pending)
+      logger.warn({ err: pending.error }, "pending sync failed");
+    else logger.info(pending, "pending synced");
   }).then(async (ok) => {
     if (ok && withAlerts) await alerts();
     return ok;
