@@ -25,6 +25,7 @@ const base = (): Dashboard => ({
     target: 666.69,
     percent: 80,
     daysLeft: 12,
+    pending: null,
   },
   goals: [
     {

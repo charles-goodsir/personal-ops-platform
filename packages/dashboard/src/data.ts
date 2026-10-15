@@ -59,7 +59,7 @@ export async function loadDashboard(
       finance.getSpending(thisMonth),
       createPaydaySettingsApi(db)
         .getSettings()
-        .then((settings) => currentMeter(db, settings, nzDate(now))),
+        .then((settings) => currentMeter(db, settings, nzDate(now), now)),
       createGoalsApi(db).listGoals(),
       Promise.all(earlier.map((e) => finance.getSpending(e.range))),
       finance.listSubscriptions(false, now),

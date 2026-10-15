@@ -34,7 +34,9 @@ const needsDb = test.skipIf(!process.env.DATABASE_URL);
 beforeEach(async () => {
   if (!testDb) return;
   const db = getDb();
-  await db.query("TRUNCATE transactions, accounts, payday_settings");
+  await db.query(
+    "TRUNCATE transactions, accounts, payday_settings, pending_transactions",
+  );
   await db.query(
     `INSERT INTO accounts (akahu_id, name, bank, type, status, currency, synced_at)
      VALUES ('acc', 'Everyday', 'Westpac', 'CHECKING', 'ACTIVE', 'NZD', now())`,
@@ -88,3 +90,13 @@ needsDb(
     expect(send).toHaveBeenCalledTimes(2);
   },
 );
+
+needsDb("pending charges never trigger an alert, however large", async () => {
+  await getDb().query(
+    `INSERT INTO pending_transactions (date, description, amount, type, fetched_at)
+     VALUES ('2026-10-14T20:00:00Z', 'X', -900, 'EFTPOS', '2026-10-15T00:30:00Z')`,
+  );
+  const send = mockSend();
+  expect(await check(send)).toBe(0);
+  expect(send).not.toHaveBeenCalled();
+});

@@ -18,7 +18,7 @@ export async function checkSpendingAlert(
   send: (text: string) => Promise<void>,
   now = new Date(),
 ): Promise<number> {
-  const meter = await currentMeter(db, settings, nzDate(now));
+  const meter = await currentMeter(db, settings, nzDate(now), now);
   if (meter === null) return 0;
   const level = levelOf(meter.percent);
   const { rows } = await db.query<{
