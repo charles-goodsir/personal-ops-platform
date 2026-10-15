@@ -1,6 +1,6 @@
 import { createTestDb, type Db } from "@ops/core";
 import { afterAll, beforeAll, beforeEach, expect, test } from "vitest";
-import { replacePending } from "./pending.js";
+import { applyRulesToPending, replacePending, syncPending } from "./pending.js";
 
 let testDb: Awaited<ReturnType<typeof createTestDb>>;
 const getDb = (): Db => {
@@ -12,7 +12,8 @@ beforeAll(async () => {
 });
 afterAll(() => testDb?.drop());
 beforeEach(async () => {
-  if (testDb) await getDb().query("TRUNCATE pending_transactions");
+  if (testDb)
+    await getDb().query("TRUNCATE pending_transactions, category_rules");
 });
 
 const item = (over: Record<string, unknown> = {}) => ({
@@ -69,3 +70,54 @@ run("the description is masked and cut short before it is stored", async () => {
   expect(first?.description).not.toMatch(/4111|12345678/);
   expect(second?.description).toHaveLength(300);
 });
+
+const cats = async () =>
+  (
+    await getDb().query<{ description: string; category: string | null }>(
+      "SELECT description, category FROM pending_transactions ORDER BY id",
+    )
+  ).rows;
+
+run(
+  "my rules categorise pending charges, the longest pattern wins, the rest stay empty",
+  async () => {
+    await getDb().query(
+      "INSERT INTO category_rules (pattern, category) VALUES ('flat', 'Housing'), ('flat account', 'Rent'), ('countdown', 'Groceries')",
+    );
+    await replacePending(getDb(), [
+      item({ description: "FLAT ACCOUNT 12" }),
+      item({ description: "COUNTDOWN MANGERE" }),
+      item({ description: "SOMEWHERE ELSE" }),
+    ]);
+    expect(await applyRulesToPending(getDb())).toBe(2);
+    expect(await cats()).toEqual([
+      { description: "FLAT ACCOUNT 12", category: "Rent" },
+      { description: "COUNTDOWN MANGERE", category: "Groceries" },
+      { description: "SOMEWHERE ELSE", category: null },
+    ]);
+  },
+);
+
+run(
+  "the sync replaces and categorises, and a failed fetch keeps the old rows",
+  async () => {
+    await getDb().query(
+      "INSERT INTO category_rules (pattern, category) VALUES ('countdown', 'Groceries')",
+    );
+    const ok = { listPendingTransactions: async () => [item()] };
+    expect(await syncPending(getDb(), ok)).toEqual({
+      pending: 1,
+      categorised: 1,
+    });
+    const refused = {
+      listPendingTransactions: async () => {
+        throw new Error("Akahu transactions/pending failed: 403 Forbidden");
+      },
+    };
+    const result = await syncPending(getDb(), refused);
+    expect(result).toHaveProperty("error");
+    expect(await cats()).toEqual([
+      { description: "COUNTDOWN", category: "Groceries" },
+    ]);
+  },
+);
