@@ -1,8 +1,8 @@
 # Personal Ops Platform
 
-A self-hosted personal platform on my home mini PC. It has a shared Postgres + pgvector data layer and an MCP server, so Claude can search my notes and query my finances, a Telegram bot that sends me a daily briefing and a weekly spending summary and answers a few commands, monthly budgets with alerts, and a read-only dashboard.
+A self-hosted personal platform on my home mini PC. It has a shared Postgres + pgvector data layer and an MCP server, so Claude can search my notes and query my finances, a Telegram bot that sends me a daily briefing and a weekly spending summary and answers a few commands, a payday plan with savings goals and spending alerts, and a read-only dashboard.
 
-Status: complete and running on my mini PC: foundation, knowledge base, finance agent, daily briefing, command bot, status alerts with an outside check, a daily diary message, budgets with alerts, and a read-only dashboard. See [docs/brief.md](docs/brief.md) for the full plan and the [risk assessment](RISK_ASSESSMENT.md) for what could go wrong and what I accepted.
+Status: complete and running on my mini PC: foundation, knowledge base, finance agent, daily briefing, command bot, status alerts with an outside check, a daily diary message, a read-only dashboard, and a payday plan with savings goals and spending alerts. See [docs/brief.md](docs/brief.md) for the full plan and the [risk assessment](RISK_ASSESSMENT.md) for what could go wrong and what I accepted.
 
 ## Why I built it
 
@@ -61,11 +61,12 @@ Each module exposes functions from its own package. The MCP server, the briefing
 - Embeddings run locally with Ollama, so note text never leaves the mini PC.
 - Bank transactions sync from Akahu (NZ open banking) daily at 08:00 NZ time, and again quietly at 00:05 so the day that has just ended is in. Akahu pulls from the bank on its own schedule, which is later than 08:00, so the sync first asks it to refresh and waits up to 3 minutes. My own rules categorise them first and Claude Haiku categorises the rest. The night sync sends no alerts.
 - Claude can answer questions like "how much did I spend on groceries last month", list my recurring charges, and look up transactions.
-- I set a monthly limit per category from Telegram. When a category passes 80% and again at 100% of its limit, one message arrives after the 08:00 sync. Each level is sent once per category per month.
-- Every morning at 08:30 NZ time a briefing arrives on Telegram: yesterday's spending and any unusual charge, this month against each budget, when the bank data was last pulled, notes that changed in the last day, and today's weather. A section that fails is skipped and shown as unavailable, and the rest still send.
+- I set a spending target for each fortnight from Telegram. When this fortnight's spending, not counting rent and bills, passes 80% of it and again at 100%, one message arrives after the 08:00 sync. Each level is sent once per fortnight.
+- Every morning at 08:30 NZ time a briefing arrives on Telegram: yesterday's spending and any unusual charge, this fortnight's spending against the target, when the bank data was last pulled, notes that changed in the last day, and today's weather. A section that fails is skipped and shown as unavailable, and the rest still send.
 - Every morning at 09:00 NZ time a second message lists the previous day's diary entries (title and bullets), and nothing arrives on a day with no entry.
+- The morning after each payday (every 14 days from a date I set) a message at about 08:00 NZ time suggests how to split my pay: rent and bills stay fixed, and whatever I spent under my spending target is added to savings and investments in their usual ratio. The savings part is shared between my goals by weight. It only suggests, because Akahu is read-only, and it sends once per payday even across a restart. See [the payday plan](#the-payday-plan).
 - Every Monday at 08:00 NZ time a summary of the week's spending arrives on Telegram as a separate message.
-- A read-only dashboard shows this month against my budgets, spending by category, the last six months, subscriptions and job health. It listens on `127.0.0.1` only, so I open it through an SSH tunnel and a password. See [the dashboard](#the-dashboard).
+- A read-only dashboard shows this fortnight against my spending target, my savings goals, spending by category, the last six months, subscriptions and job health. It listens on `127.0.0.1` only, so I open it through an SSH tunnel and a password. See [the dashboard](#the-dashboard).
 - I can message the bot from my own Telegram chat and get answers back: spending, subscriptions, matching notes, or the briefing on demand. See [Telegram commands](#telegram-commands).
 
 ## MCP tools
@@ -89,37 +90,39 @@ Only the two rule-editing tools change data, and they can only change categories
 
 Send these to the bot from my own private chat. Every other chat is ignored with no reply.
 
-| Command                           | What it does                                                            |
-| --------------------------------- | ----------------------------------------------------------------------- |
-| `/spend [period] [category]`      | Spending by category, default this month. `/spend last month groceries` |
-| `/subs [all]`                     | Active recurring charges, or all of them                                |
-| `/notes <words>`                  | Titles and paths of matching notes. Never note text                     |
-| `/briefing`                       | Sends the daily briefing now                                            |
-| `/budget`                         | This month's spending against each budget limit                         |
-| `/budget set <category> <amount>` | Set a monthly limit, for example `/budget set groceries 600`            |
-| `/budget remove <category>`       | Remove a limit                                                          |
-| `/status`                         | When each job last succeeded, and which are stale                       |
-| `/help`                           | Lists the commands, periods and categories                              |
+| Command                            | What it does                                                                 |
+| ---------------------------------- | ---------------------------------------------------------------------------- |
+| `/spend [period] [category]`       | Spending by category, default this month. `/spend last month groceries`      |
+| `/subs [all]`                      | Active recurring charges, or all of them                                     |
+| `/notes <words>`                   | Titles and paths of matching notes. Never note text                          |
+| `/briefing`                        | Sends the daily briefing now                                                 |
+| `/payday`                          | The pay split, worked out from what I spent this fortnight                   |
+| `/payday set <item> <amount>`      | Set the pay, rent, savings, invest or spending target. Several pairs at once |
+| `/payday set payday <date>`        | The date of one payday. Paydays fall every 14 days from it                   |
+| `/goal`                            | List the savings goals                                                       |
+| `/goal add <name> <target> [date]` | Add a goal. Also `/goal saved`, `/goal weight` and `/goal remove`            |
+| `/status`                          | When each job last succeeded, and which are stale                            |
+| `/help`                            | Lists the commands, periods and categories                                   |
 
-The commands use no model. Only `/budget set` and `/budget remove` change anything, and only my budget limits. The category must be on the list (not Income, Transfers or Investments) and the amount plain digits, at most two decimals, over 0. Arguments must match the period names and the category list, and nothing is passed on as free text. See [the ADR](docs/adr/0007-telegram-command-bot.md) for the allowlist, the rate limit and what I left out.
+The commands use no model. Only `/payday set` and the `/goal` commands change anything, and only my payday settings and goals. An amount is plain digits, at most two decimals, over 0, and a date is `YYYY-MM-DD`. When one message sets several things, every pair is checked before any is saved. Arguments must match the period names and the category list, and nothing is passed on as free text. See [the ADR](docs/adr/0007-telegram-command-bot.md) for the allowlist, the rate limit and what I left out.
 
 ## Services (Docker Compose)
 
-| Service          | Role                                                                                                                                                                                                                                                    |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `db`             | Postgres 17 with pgvector. Published on 127.0.0.1 only                                                                                                                                                                                                  |
-| `migrate`        | One-shot: runs the SQL migrations, then exits                                                                                                                                                                                                           |
-| `ollama`         | Embeddings model server (`nomic-embed-text`). No published port                                                                                                                                                                                         |
-| `ollama-pull`    | One-shot: downloads the model into a volume, then exits                                                                                                                                                                                                 |
-| `backup`         | Dumps the database at startup and nightly at 03:00 NZ time, keeping 14 days                                                                                                                                                                             |
-| `knowledge-base` | Scans the notes folder at startup, watches it for changes, and rescans every 15 minutes                                                                                                                                                                 |
-| `finance`        | Asks Akahu to refresh, then syncs accounts and transactions at startup, daily at `FINANCE_SYNC_TIME` (default 08:00 NZ time) and quietly at `FINANCE_NIGHT_SYNC_TIME` (default 00:05). Then categorises, and sends budget alerts after the morning sync |
-| `bot`            | Polls Telegram for my commands and answers them, and runs the watchdog. Outbound only                                                                                                                                                                   |
-| `briefing`       | Sends the daily briefing to Telegram at `BRIEFING_TIME` (default 08:30 NZ time)                                                                                                                                                                         |
-| `diary`          | Sends yesterday's diary entries to Telegram at `DIARY_TIME` (default 09:00 NZ time)                                                                                                                                                                     |
-| `dashboard`      | The read-only web page. Published on 127.0.0.1 only, reached through an SSH tunnel. Connects as a role that can only `SELECT`                                                                                                                           |
-| `summary`        | Sends the weekly spending summary to Telegram, Monday 08:00 NZ time                                                                                                                                                                                     |
-| `mcp-server`     | The MCP server. Published on the address set by `MCP_PUBLISH_ADDR`                                                                                                                                                                                      |
+| Service          | Role                                                                                                                                                                                                                                                                                |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `db`             | Postgres 17 with pgvector. Published on 127.0.0.1 only                                                                                                                                                                                                                              |
+| `migrate`        | One-shot: runs the SQL migrations, then exits                                                                                                                                                                                                                                       |
+| `ollama`         | Embeddings model server (`nomic-embed-text`). No published port                                                                                                                                                                                                                     |
+| `ollama-pull`    | One-shot: downloads the model into a volume, then exits                                                                                                                                                                                                                             |
+| `backup`         | Dumps the database at startup and nightly at 03:00 NZ time, keeping 14 days                                                                                                                                                                                                         |
+| `knowledge-base` | Scans the notes folder at startup, watches it for changes, and rescans every 15 minutes                                                                                                                                                                                             |
+| `finance`        | Asks Akahu to refresh, then syncs accounts and transactions at startup, daily at `FINANCE_SYNC_TIME` (default 08:00 NZ time) and quietly at `FINANCE_NIGHT_SYNC_TIME` (default 00:05). Then categorises, and sends the spending alert and the payday message after the morning sync |
+| `bot`            | Polls Telegram for my commands and answers them, and runs the watchdog. Outbound only                                                                                                                                                                                               |
+| `briefing`       | Sends the daily briefing to Telegram at `BRIEFING_TIME` (default 08:30 NZ time)                                                                                                                                                                                                     |
+| `diary`          | Sends yesterday's diary entries to Telegram at `DIARY_TIME` (default 09:00 NZ time)                                                                                                                                                                                                 |
+| `dashboard`      | The read-only web page. Published on 127.0.0.1 only, reached through an SSH tunnel. Connects as a role that can only `SELECT`                                                                                                                                                       |
+| `summary`        | Sends the weekly spending summary to Telegram, Monday 08:00 NZ time                                                                                                                                                                                                                 |
+| `mcp-server`     | The MCP server. Published on the address set by `MCP_PUBLISH_ADDR`                                                                                                                                                                                                                  |
 
 The app services run from one image as a non-root user, with a read-only filesystem, all capabilities dropped and `no-new-privileges`. The notes folder is mounted read-only.
 
@@ -153,7 +156,8 @@ Short records of the choices that shaped the project, with what I rejected and w
 8. [Heartbeats and a watchdog, so a silent failure becomes a message](docs/adr/0008-heartbeats-and-watchdog.md), with an update for the outside check
 9. [Yesterday's diary entries as their own morning message](docs/adr/0009-diary-message.md)
 10. [Decisions from the threat model: an audit line, one token, no rate limit](docs/adr/0010-threat-model-decisions.md)
-11. [Budgets and a read-only dashboard](docs/adr/0011-budgets-and-dashboard.md)
+11. [Budgets and a read-only dashboard](docs/adr/0011-budgets-and-dashboard.md), where the budgets were later replaced
+12. [A payday plan and savings goals](docs/adr/0012-payday-plan-and-savings-goals.md)
 
 ## Setup
 
@@ -172,9 +176,19 @@ For development: `corepack pnpm install`, then `corepack pnpm test`. Integration
 
 To send a summary, briefing or diary message now, run `docker compose exec summary node packages/finance/dist/summary-main.js --once`, `docker compose exec briefing node packages/briefing/dist/briefing-main.js --once` or `docker compose exec diary node packages/briefing/dist/diary-main.js --once` (add `--day=2026-10-12` to choose the day).
 
+## The payday plan
+
+I am paid every fortnight and want to spend less and save more, so the message that matters comes the morning after pay. Settings and goals live in the database and are set from the bot, so my pay and amounts are never in the repo or `.env`.
+
+- **The split.** Rent and bills are a fixed amount that never changes. Spending is what I spent in the 14 days ending on payday, leaving out Housing, Utilities, Insurance, Transfers and Investments. If that is under my spending target, the difference is added to savings and investments in their usual ratio. If it is over, the message says by how much and shows the usual amounts. Everything is whole cents, and any odd cent goes to savings.
+- **Goals.** A goal has a name, a target, an optional date, an amount saved that I update by hand, and a weight from 1 to 10. The savings part is shared by weight across goals that are not full, and a full goal stops receiving money.
+- **The meter.** This fortnight's spending so far against the target shows on the dashboard and in the morning briefing, and sends one alert at 80% and one at 100%.
+- **Timing.** The pay lands in the evening, so the message waits until the morning sync has pulled it. It records the payday it covered, so it never repeats. If the pay is not in my data yet, the message says so and uses the pay I set.
+- **Budgets are gone.** They are replaced by the target and the goals. See [ADR 12](docs/adr/0012-payday-plan-and-savings-goals.md) for the options I rejected.
+
 ## The dashboard
 
-A read-only page for what I would otherwise ask the bot: this month against each budget, spending by category, the last six months, subscriptions and job health. It also shows when the bank data was last pulled. It is plain `node:http` with no framework, and the charts are inline SVG, so it needs no script and no outside file.
+A read-only page for what I would otherwise ask the bot: this fortnight against my spending target, my savings goals, spending by category, the last six months, subscriptions and job health. It also shows when the bank data was last pulled. It is plain `node:http` with no framework, and the charts are inline SVG, so it needs no script and no outside file.
 
 It listens on `127.0.0.1` on the mini PC, so it is not reachable over the LAN. To open it:
 
@@ -184,7 +198,7 @@ ssh -L 8081:localhost:3100 owner@<mini PC>
 
 Then browse to `http://localhost:8081` and give any user name and `DASHBOARD_PASSWORD`.
 
-Every request is checked in this order: the Host name against an allowlist, the method (GET and HEAD only), the password (one password, constant-time compare), then a fixed list of two paths. The page connects to Postgres as `dashboard_ro`, a role with `SELECT` on four tables and nothing else. Everything from the database is HTML-escaped, payee names have their digits masked, and the content security policy allows no inline script or style. See [ADR 11](docs/adr/0011-budgets-and-dashboard.md), and [batch D of the security testing](docs/security-testing.md#batch-d-the-dashboard-and-the-budget-commands).
+Every request is checked in this order: the Host name against an allowlist, the method (GET and HEAD only), the password (one password, constant-time compare), then a fixed list of two paths. The page connects to Postgres as `dashboard_ro`, a role with `SELECT` on five tables and nothing else. Everything from the database is HTML-escaped, payee names have their digits masked, and the content security policy allows no inline script or style. See [ADR 11](docs/adr/0011-budgets-and-dashboard.md), and [batch D of the security testing](docs/security-testing.md#batch-d-the-dashboard-and-the-budget-commands).
 
 ## Backups
 
@@ -226,7 +240,9 @@ The [risk assessment](RISK_ASSESSMENT.md) lists what I am protecting, what could
 - Names in person-to-person payments are sent to the model as written, both for categorisation and as payee names in the weekly summary.
 - Closed accounts are not returned by Akahu's API, so a closed credit card's history is missing and spending on it is not counted. Payments to it count as transfers.
 - Transactions older than `FINANCE_HISTORY_START` (default 2026-01-01) are not kept. Moving it later deletes older local copies on the next sync.
-- Budgets are per category and per calendar month. There is no overall limit, and an alert can arrive up to a day after the spending, because it is sent after a sync.
+- The spending target is one amount for the whole fortnight, not per category, and an alert can arrive up to a day after the spending, because it is sent after a sync. The 80% alert can fire early in a fortnight if a few large purchases land together.
+- What a goal has saved is what I tell the bot, not read from the bank, so it can drift from my real savings until I correct it. The payday message only suggests: I make the transfers, because Akahu is read-only for me.
+- The payday schedule is a fixed date plus 14 days. If my pay changes, I change the date. If a send fails, it is tried again at each morning sync for three more days, then skipped.
 - The dashboard is only reachable through an SSH tunnel, so I can't open it on my phone. Its read-only role is set when each connection starts, so a session that could run arbitrary SQL could switch to my login user. It runs fixed queries only. A login role with its own password would close that. Category names on the page are not masked, because only my rules and the model can set a category and both use a fixed list.
 - Akahu pulls from the bank about once a day and stamps most transactions 23:59:59, so a transaction appears in my data after its day ends. The sync asks Akahu to refresh first, which Akahu may ignore inside its one hour rest period.
 - Recurring-charge and anomaly detection are plain heuristics with fixed thresholds. They are tuned on one person's data.
