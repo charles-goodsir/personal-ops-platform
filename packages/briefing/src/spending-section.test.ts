@@ -50,3 +50,32 @@ run(
     );
   },
 );
+
+run(
+  "with charges pending it leads with settled plus pending as an estimate, then the split, and ignores a stale list",
+  async () => {
+    const db = getDb();
+    await createPaydaySettingsApi(db).setAmount("spending", 400);
+    const pend = (amount: number, fetchedAt: string) =>
+      db.query(
+        `INSERT INTO pending_transactions (date, description, amount, type, fetched_at)
+         VALUES ('2026-10-14T20:00:00Z', 'X', $1, 'EFTPOS', $2)`,
+        [amount, fetchedAt],
+      );
+    await pend(-100, "2026-10-14T17:00:00Z");
+    expect(await build()).toBe(
+      "about $250.00 of $400.00 (62%), 12 days to payday. $150.00 settled, about $100.00 pending (1 charge).",
+    );
+    await pend(-1, "2026-10-14T17:00:00Z");
+    expect(await build()).toBe(
+      "about $251.00 of $400.00 (62%), 12 days to payday. $150.00 settled, about $101.00 pending (2 charges).",
+    );
+    await pend(-200, "2026-10-14T17:00:00Z");
+    expect(await build()).toContain("(112%), 12 days to payday OVER.");
+    await db.query(
+      "UPDATE pending_transactions SET fetched_at = '2026-10-12T00:00:00Z'",
+    );
+    expect(await build()).toBe("$150.00 of $400.00 (37%), 12 days to payday");
+    await db.query("TRUNCATE pending_transactions");
+  },
+);
