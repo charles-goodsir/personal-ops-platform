@@ -76,5 +76,6 @@ export {
   type Plan,
 } from "./payday-plan.js";
 export { sendPaydayMessage, type PaydayResult } from "./payday-message.js";
+export { replacePending } from "./pending.js";
 export { checkSpendingAlert } from "./spending-alert.js";
 export { currentMeter, type Meter } from "./spending-meter.js";

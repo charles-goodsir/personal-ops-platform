@@ -136,3 +136,53 @@ test("a rate limited refresh says so and never carries a token", async () => {
   );
   expect((err as Error).message).not.toContain(userToken);
 });
+
+test("pending charges keep four fields, and meta (with its account number) is never parsed", async () => {
+  const fetch = mockFetch(200, {
+    success: true,
+    items: [
+      {
+        _user: "u",
+        _account: "acc_1",
+        _connection: "conn_1",
+        date: "2026-10-15T10:59:00Z",
+        description: "COUNTDOWN",
+        amount: -12.5,
+        type: "EFTPOS",
+        updated_at: "2026-10-16T00:00:00Z",
+        meta: { other_account: "01-0123-0123456-00", card_suffix: "7997" },
+      },
+    ],
+  });
+  const items = await akahu.listPendingTransactions();
+  const [url] = fetch.mock.calls[0] as unknown as [URL];
+  expect(url.href).toBe("https://api.akahu.io/v1/transactions/pending");
+  expect(items).toEqual([
+    {
+      date: "2026-10-15T10:59:00Z",
+      description: "COUNTDOWN",
+      amount: -12.5,
+      type: "EFTPOS",
+    },
+  ]);
+  expect(JSON.stringify(items)).not.toMatch(/0123456|7997/);
+});
+
+test("a pending response that is too long, malformed or refused is an error", async () => {
+  const item = {
+    date: "2026-10-15T10:59:00Z",
+    description: "X",
+    amount: -1,
+    type: "EFTPOS",
+  };
+  mockFetch(200, { success: true, items: Array(1001).fill(item) });
+  await expect(akahu.listPendingTransactions()).rejects.toThrow(/too many/);
+  mockFetch(200, { success: true, items: [{ ...item, date: "not a date" }] });
+  await expect(akahu.listPendingTransactions()).rejects.toThrow();
+  mockFetch(200, { success: true, items: [{ ...item, amount: "5" }] });
+  await expect(akahu.listPendingTransactions()).rejects.toThrow();
+  mockFetch(403, { success: false, message: "Forbidden" });
+  await expect(akahu.listPendingTransactions()).rejects.toThrow(
+    "Akahu transactions/pending failed: 403 Forbidden",
+  );
+});
