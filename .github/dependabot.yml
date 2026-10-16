@@ -1,0 +1,58 @@
+version: 2
+
+# Version updates, weekly. Every update is a pull request that runs CI and the
+# audit, and I merge each one myself. The 7 day cooldown means I never take a
+# release that is less than a week old, because a compromised release is
+# usually found within days.
+updates:
+  - package-ecosystem: npm
+    directories: ["/", "/packages/*"]
+    schedule:
+      interval: weekly
+      day: monday
+      time: "08:00"
+      timezone: Pacific/Auckland
+    open-pull-requests-limit: 5
+    cooldown:
+      default-days: 7
+    groups:
+      # Minor and patch updates arrive as one pull request. A major update
+      # stays on its own, because it can break the build.
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  # Keeps the commit SHAs that the workflows are pinned to current.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "08:00"
+      timezone: Pacific/Auckland
+    open-pull-requests-limit: 5
+    cooldown:
+      default-days: 7
+
+  # The base image digest in the Dockerfile.
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "08:00"
+      timezone: Pacific/Auckland
+    open-pull-requests-limit: 5
+    cooldown:
+      default-days: 7
+
+  # The database and Ollama images in the compose file.
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "08:00"
+      timezone: Pacific/Auckland
+    open-pull-requests-limit: 5
+    cooldown:
+      default-days: 7
