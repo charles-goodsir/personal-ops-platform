@@ -1,0 +1,80 @@
+name: Release
+
+# Builds the image, scans it, pushes it to GHCR by digest and signs it. Only
+# runs on main and never on a pull request, because this job can push and sign.
+# No third party actions: the two tools are downloaded and checked against a
+# pinned checksum, as the gitleaks step in ci.yml does.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write # push the image
+      id-token: write # sign it with this workflow's identity, no key stored
+    env:
+      IMAGE: ghcr.io/charles-goodsir/personal-ops
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build
+        run: |
+          docker build \
+            --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
+            -t personal-ops:scan .
+
+      # A high or critical finding that has a fix stops the release. Findings
+      # with no fix yet are not a reason to stop, because nothing can be done.
+      - name: Trivy
+        env:
+          VERSION: 0.75.0
+          SHA256: c6e65abddb348e25f10549df887045629cf28cc72453cd1c63acb717316b3f3f
+        run: |
+          curl -sSfL -o trivy.tgz "https://github.com/aquasecurity/trivy/releases/download/v${VERSION}/trivy_${VERSION}_Linux-64bit.tar.gz"
+          echo "${SHA256}  trivy.tgz" | sha256sum -c -
+          tar -xzf trivy.tgz trivy && rm trivy.tgz
+          ./trivy image --scanners vuln --ignore-unfixed --severity HIGH,CRITICAL --exit-code 1 personal-ops:scan
+
+      - name: Push
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "${TOKEN}" | docker login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
+          docker tag personal-ops:scan "${IMAGE}:sha-${GITHUB_SHA}"
+          docker tag personal-ops:scan "${IMAGE}:main"
+          docker push "${IMAGE}:sha-${GITHUB_SHA}"
+          docker push "${IMAGE}:main"
+          echo "DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "${IMAGE}:sha-${GITHUB_SHA}")" >> "${GITHUB_ENV}"
+
+      - name: Sign
+        env:
+          VERSION: 2.6.5
+          SHA256: c3b4f5410e608af03a5eb0aaac84a4313d8da131248e08ff1759ac70c79d1644
+        run: |
+          curl -sSfL -o cosign "https://github.com/sigstore/cosign/releases/download/v${VERSION}/cosign-linux-amd64"
+          echo "${SHA256}  cosign" | sha256sum -c -
+          chmod +x cosign
+          ./cosign sign --yes "${DIGEST}"
+
+      # The same check the mini PC will make: this workflow, on main.
+      - name: Verify the signature
+        run: |
+          ./cosign verify "${DIGEST}" \
+            --certificate-identity "https://github.com/${GITHUB_REPOSITORY}/.github/workflows/release.yml@refs/heads/main" \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com
