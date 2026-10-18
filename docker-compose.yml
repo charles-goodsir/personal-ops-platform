@@ -263,7 +263,7 @@ services:
   # Embeddings model server. No published port: only reachable from other
   # services on the compose network, so notes never leave the box.
   ollama:
-    image: ollama/ollama:0.34.4@sha256:8262851b2846b87c649eddf3e76beb270c52f4d1bc94559f47efde16b0841551
+    image: ollama/ollama:0.40.3@sha256:adca95a12c2b386a8f9a995e7fa0600e187e3323b5e5522f5a6c3b1ec73eff99
     restart: unless-stopped
     volumes:
       - ollama:/root/.ollama
@@ -278,7 +278,7 @@ services:
 
   # One-shot: downloads the model into the ollama volume. A no-op once it is there.
   ollama-pull:
-    image: ollama/ollama:0.34.4@sha256:8262851b2846b87c649eddf3e76beb270c52f4d1bc94559f47efde16b0841551
+    image: ollama/ollama:0.40.3@sha256:adca95a12c2b386a8f9a995e7fa0600e187e3323b5e5522f5a6c3b1ec73eff99
     command: ["pull", "${EMBED_MODEL:-nomic-embed-text}"]
     environment:
       OLLAMA_HOST: ollama:11434
