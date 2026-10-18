@@ -1,0 +1,13 @@
+[Unit]
+Description=Check for a new signed image and deploy it
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=owner
+WorkingDirectory=/home/owner/personal-ops-platform
+ExecStart=/home/owner/personal-ops-platform/scripts/update.sh
+TimeoutStartSec=20min
+NoNewPrivileges=yes
+PrivateTmp=yes
