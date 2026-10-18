@@ -49,6 +49,12 @@ updates:
     open-pull-requests-limit: 5
     cooldown:
       default-days: 7
+    ignore:
+      # The runtime is Node 24, the long term support line, and .nvmrc and CI
+      # test on it. A newer odd numbered Node is not long term support and the
+      # image must not move to it on its own. Digest updates within 24 still come.
+      - dependency-name: "node"
+        update-types: ["version-update:semver-major"]
 
   # The database and Ollama images in the compose file.
   - package-ecosystem: docker-compose
