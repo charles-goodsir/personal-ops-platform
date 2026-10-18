@@ -15,6 +15,11 @@ updates:
     open-pull-requests-limit: 5
     cooldown:
       default-days: 7
+    ignore:
+      # The runtime is Node 24, so the types stay on the 24 line. A new Node
+      # major is a deliberate change that moves .nvmrc, the Dockerfile and this.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
     groups:
       # Minor and patch updates arrive as one pull request. A major update
       # stays on its own, because it can break the build.
@@ -56,3 +61,10 @@ updates:
     open-pull-requests-limit: 5
     cooldown:
       default-days: 7
+    ignore:
+      # Ollama is before 1.0, so a minor version can change how notes are
+      # embedded, and CI never runs it. I update it by hand and try it on the
+      # box. Patch updates still come through.
+      - dependency-name: "ollama/ollama"
+        update-types:
+          ["version-update:semver-major", "version-update:semver-minor"]
