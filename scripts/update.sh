@@ -30,7 +30,8 @@ log() { echo "$(date -Is) $*"; }
 env_value() { grep -m1 "^$1=" .env 2>/dev/null | cut -d= -f2- | tr -d '\r' || true; }
 
 # One Telegram message with fixed words and a short digest, never a log. The
-# token goes in through stdin so it is not in the process list.
+# token goes in through stdin so it is not in the process list. The connection
+# to Telegram resets now and then, so a failed send is tried again.
 alert() {
   [ "$DRY_RUN" = 1 ] && return 0
   local token chat
@@ -38,7 +39,7 @@ alert() {
   chat=$(env_value TELEGRAM_CHAT_ID)
   [ -n "$token" ] && [ -n "$chat" ] || return 0
   printf 'url = "https://api.telegram.org/bot%s/sendMessage"\n' "$token" |
-    curl -sS -m 20 -K - --data-urlencode "chat_id=$chat" --data-urlencode "text=$1" -o /dev/null ||
+    curl -sS -m 20 --retry 4 --retry-delay 3 --retry-all-errors -K - --data-urlencode "chat_id=$chat" --data-urlencode "text=$1" -o /dev/null ||
     log "could not send the alert"
 }
 
