@@ -9,3 +9,6 @@ coverage/
 backups/
 # Personal notes for the knowledge base. Never committed or baked into images.
 notes/
+
+# Deploy state written by scripts/update.sh on the mini PC.
+.deploy/

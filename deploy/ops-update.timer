@@ -1,0 +1,10 @@
+[Unit]
+Description=Nightly check for a new signed image
+
+[Timer]
+# After the 03:00 backup, so a fresh dump is the way back if a migration goes wrong.
+OnCalendar=*-*-* 03:30:00 Pacific/Auckland
+Persistent=true
+
+[Install]
+WantedBy=timers.target

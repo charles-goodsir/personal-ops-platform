@@ -17,6 +17,7 @@ const LABELS: Record<Job, string> = {
   summary: "Weekly summary",
   diary: "Diary message",
   backup: "Backup",
+  "image-update": "Image update",
 };
 
 const CHECK_MS = 5 * 60 * 1000;
