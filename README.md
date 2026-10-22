@@ -159,6 +159,7 @@ Short records of the choices that shaped the project, with what I rejected and w
 11. [Budgets and a read-only dashboard](docs/adr/0011-budgets-and-dashboard.md), where the budgets were later replaced
 12. [A payday plan and savings goals](docs/adr/0012-payday-plan-and-savings-goals.md)
 13. [Pending charges beside the settled spending](docs/adr/0013-pending-charges.md)
+14. [Signed images and a pull-based deploy](docs/adr/0014-signed-images-and-a-pull-based-deploy.md)
 
 ## Setup
 
@@ -176,6 +177,16 @@ Short records of the choices that shaped the project, with what I rejected and w
 For development: `corepack pnpm install`, then `corepack pnpm test`. Integration tests run against Postgres when `DATABASE_URL` is set, in a throwaway schema built from the real migrations.
 
 To send a summary, briefing or diary message now, run `docker compose exec summary node packages/finance/dist/summary-main.js --once`, `docker compose exec briefing node packages/briefing/dist/briefing-main.js --once` or `docker compose exec diary node packages/briefing/dist/diary-main.js --once` (add `--day=2026-10-12` to choose the day).
+
+## Deploys
+
+A new image is built and signed by CI, and the mini PC fetches it. Nothing is pushed to the box, and the box holds no deploy credentials.
+
+- **CI.** On every push to `main`, the Release workflow builds the image, scans it with Trivy (a high or critical finding that has a fix stops it), pushes it to `ghcr.io/charles-goodsir/personal-ops` by digest and signs it with cosign, using the workflow's own identity and no stored key. A separate Audit workflow runs `pnpm audit` on every pull request and weekly. Dependabot opens weekly updates with a 7 day cooldown, and I merge each one myself.
+- **The box.** A systemd timer runs `scripts/update.sh` nightly at 03:30 NZ, after the backup. It checks the signature against the release workflow on `main`, by digest, pulls the image, tags it `personal-ops:local`, runs `docker compose up -d` and waits for every service to stay up for 60 seconds. If they do not, it puts the previous image back and skips that digest until a newer one appears. It records an `image-update` heartbeat for `/status` and the watchdog and sends one Telegram message per outcome. `scripts/update.sh --dry-run` verifies and changes nothing.
+- **Setting it up.** Install cosign on the box at the version CI uses (the checksum is in the release workflow), then copy `deploy/ops-update.service` and `deploy/ops-update.timer` to `/etc/systemd/system/` and enable the timer.
+- **By hand.** `git pull`, `docker compose build` and `docker compose up -d` still work, and build the image on the box.
+- **The limit.** The database is not rolled back with the image, so a migration has to work with the release before it. See [ADR 14](docs/adr/0014-signed-images-and-a-pull-based-deploy.md).
 
 ## The payday plan
 
@@ -223,6 +234,7 @@ The [risk assessment](RISK_ASSESSMENT.md) lists what I am protecting, what could
 
 - I wrote a [threat model](docs/threat-model.md), then attacked my own server and tools with about 230 tests and wrote up every result, including the 17 findings I fixed, in [docs/security-testing.md](docs/security-testing.md). The MCP server logs one audit line per request (the tool and the argument names, never the values) and logs failed token guesses.
 - The repo is public. `main` is protected by a ruleset: changes need a pull request and a passing `check`, and force pushes and deletion are blocked. I proved it by trying a direct push and getting it rejected. Secret scanning with push protection and Dependabot alerts are on, and the history was scanned with gitleaks before and after going public. See [SECURITY.md](SECURITY.md) for reporting a problem.
+- Dependencies and images are checked on the way in and on the way out: a weekly and per pull request audit, Dependabot with a cooldown, a Trivy scan of the image, a cosign signature from the release workflow, and a box that only deploys an image with that signature and rolls back if it does not stay up. The results, including a finding I fixed and a Dependabot change I merged that moved the image to a release that is not long term support, are in [batch F of the security testing](docs/security-testing.md).
 - The dashboard is a new entry point, so it had its own section of the threat model and its own attack tests (batch D), which found no bypass. It answers only GET and HEAD to two paths behind a password and a Host allowlist, escapes everything from the database, and connects as a role that cannot write. I proved the role on the live box with `INSERT`, `DELETE` and a read of a table it should not see, each in a transaction I rolled back.
 - Bearer tokens are hashed before a constant-time compare. `MCP_AUTH_TOKENS` takes several tokens so one can be rotated in before the old one is removed.
 - A Host header allowlist protects against DNS rebinding.
@@ -244,6 +256,8 @@ The [risk assessment](RISK_ASSESSMENT.md) lists what I am protecting, what could
 - Transactions older than `FINANCE_HISTORY_START` (default 2026-01-01) are not kept. Moving it later deletes older local copies on the next sync.
 - The spending target is one amount for the whole fortnight, not per category, and an alert can arrive up to a day after the spending, because it is sent after a sync. The 80% alert can fire early in a fortnight if a few large purchases land together.
 - What a goal has saved is what I tell the bot, not read from the bank, so it can drift from my real savings until I correct it. The payday message only suggests: I make the transfers, because Akahu is read-only for me.
+- A rollback restores the previous image and not the database. A migration that has run stays, so each migration has to work with the release before it. The nightly backup is the way back for data.
+- The updater's user is in the docker group, which is root-equivalent, and someone who can repoint the `main` tag at an older signed image could roll the box back. GHCR write access is limited to the release workflow.
 - The pending figure is an estimate. A pending charge no rule matches counts as spending, so it can run high until the charge settles, and a card hold can vanish. I have not proved Akahu never lists a charge as pending and settled at once.
 - The payday schedule is a fixed date plus 14 days. If my pay changes, I change the date. If a send fails, it is tried again at each morning sync for three more days, then skipped.
 - The dashboard is only reachable through an SSH tunnel, so I can't open it on my phone. Its read-only role is set when each connection starts, so a session that could run arbitrary SQL could switch to my login user. It runs fixed queries only. A login role with its own password would close that. Category names on the page are not masked, because only my rules and the model can set a category and both use a fixed list.
