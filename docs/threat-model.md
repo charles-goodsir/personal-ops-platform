@@ -145,10 +145,24 @@ The budget commands and alerts (D8, D9) were removed in phase 12 ([ADR 12](adr/0
 | E11 | T      | Unstable pending numbers send an alert or change the payday plan                                            | The alert and the plan read the settled figure only                                                                                                           | Tested: a 900 pending charge sends no alert, and making the alert read the combined figure fails the test. Passed                                                          |
 | E12 | S, D   | A malformed, huge or slow pending response                                                                  | Four fields only, `meta` never parsed, a 1,000 item cap, a 30 second timeout, and zod validation                                                              | Tested: too long, bad date, wrong type and a 403. Passed                                                                                                                   |
 
+### F. The supply chain and the deploy ([ADR 14](adr/0014-signed-images-and-a-pull-based-deploy.md))
+
+| ID  | STRIDE | Threat                                                                    | What stops it today                                                                                                                                              | Result                                                                                                                                                               |
+| --- | ------ | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| F1  | T      | A production dependency has a known high or critical advisory             | `pnpm audit` on every pull request and weekly, a lockfile, and a 7 day cooldown on updates                                                                       | Tested: a branch with a vulnerable dependency failed the audit and passed the build check. Passed. **Accepted:** a malicious release not yet in an advisory database |
+| F2  | T, E   | A compromised GitHub Action or downloaded tool runs in the release job    | Actions pinned by commit SHA and kept current by Dependabot. The release job uses no third party actions, and its two tools are checked against pinned checksums | Not an attack test. Checked by reading the workflow. The two checksums were compared with the publishers' own files                                                  |
+| F3  | E      | A pull request, or a fork, makes the release workflow build, push or sign | The workflow runs on pushes to `main` only, and the job checks the ref. Write permissions belong to that one job                                                 | Not triggered as an attack, because a fork cannot be simulated safely here. Recorded as a design limit                                                               |
+| F4  | T, S   | An unsigned image, or one signed by someone else, is deployed to the box  | The updater verifies the cosign signature against this repo's release workflow on `main`, by digest, and changes nothing if it fails                             | Tested on the box and from my laptop: an image with no signature and an image signed by Sigstore's own identity were both refused. Passed                            |
+| F5  | T      | An older signed image is replayed by repointing the `main` tag            | GHCR write access is limited to the release workflow                                                                                                             | **Accepted.** Not tested. Someone who could do this could already push to the registry                                                                               |
+| F6  | D      | A bad release takes the box down                                          | The updater requires every service to stay up for 60 seconds with no restart loop, and rolls back to the previous image if not                                   | Tested on the box: a trial that could not succeed rolled back to the previous image (the image ids matched). The real update then stayed up. Passed                  |
+| F7  | R, D   | The updater stops running, or fails, and I do not notice                  | An `image-update` heartbeat watched by the watchdog (26 hours), and a Telegram message for each outcome                                                          | Proven by accident: with the timer not installed, the watchdog alerted 26 hours after the last manual run. Passed                                                    |
+| F8  | D      | The Telegram message about an update is lost to a connection reset        | The send is retried up to 4 times                                                                                                                                | **Finding, fixed:** the first real update logged `Connection reset by peer` and sent nothing. The retry was added after it                                           |
+| F9  | E      | The updater's user can control the host                                   | It makes only outbound calls and holds no deploy credentials                                                                                                     | **Accepted:** the user is in the docker group, which is root-equivalent                                                                                              |
+
 ## Threats I am not testing in this phase
 
 - **The host and the network:** SSH, the firewall, disk encryption and the router are covered by the earlier hardening and risks R7, R15 and R17.
-- **The supply chain:** dependency and image scanning belong to a later step (risk R13).
+- **The supply chain beyond what section F covers:** a build that is reproducible bit for bit, a software bill of materials, and build provenance attestations.
 - **A free-text bot:** it does not exist. If I build it, it needs its own threat model and a red-team suite.
 
 ## Assumptions
@@ -168,10 +182,11 @@ The budget commands and alerts (D8, D9) were removed in phase 12 ([ADR 12](adr/0
 
 ## Review
 
-| Date        | Reviewer | Result                                                                                                          |
-| ----------- | -------- | --------------------------------------------------------------------------------------------------------------- |
-| 12 Oct 2026 | Me       | Approved by merging the draft. A8 and A9 decided in [ADR 10](adr/0010-threat-model-decisions.md)                |
-| 13 Oct 2026 | Me       | Section D added for the budgets and dashboard phase, see [ADR 11](adr/0011-budgets-and-dashboard.md)            |
-| 14 Oct 2026 | Me       | Section E added for the payday plan and savings goals, see [ADR 12](adr/0012-payday-plan-and-savings-goals.md)  |
-| 15 Oct 2026 | Me       | Section E tested (batch E), D8 and D9 marked removed with the budgets. No bypass found                          |
-| 16 Oct 2026 | Me       | E8 to E12 added for the pending charges, see [ADR 13](adr/0013-pending-charges.md), and tested. No bypass found |
+| Date        | Reviewer | Result                                                                                                                                              |
+| ----------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 12 Oct 2026 | Me       | Approved by merging the draft. A8 and A9 decided in [ADR 10](adr/0010-threat-model-decisions.md)                                                    |
+| 13 Oct 2026 | Me       | Section D added for the budgets and dashboard phase, see [ADR 11](adr/0011-budgets-and-dashboard.md)                                                |
+| 14 Oct 2026 | Me       | Section E added for the payday plan and savings goals, see [ADR 12](adr/0012-payday-plan-and-savings-goals.md)                                      |
+| 15 Oct 2026 | Me       | Section E tested (batch E), D8 and D9 marked removed with the budgets. No bypass found                                                              |
+| 16 Oct 2026 | Me       | E8 to E12 added for the pending charges, see [ADR 13](adr/0013-pending-charges.md), and tested. No bypass found                                     |
+| 22 Oct 2026 | Me       | Section F added for the supply chain and the deploy, see [ADR 14](adr/0014-signed-images-and-a-pull-based-deploy.md), and tested. One finding fixed |

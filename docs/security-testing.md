@@ -1,6 +1,6 @@
 # Security testing
 
-Status: **about 230 attack tests (74 on the MCP HTTP layer, 49 on the tools, 76 on the bot, files, logs and parsers, one on the rules function, and 31 on the dashboard and the budget commands). Five batches are done (batch E also covers the pending charges): A, the MCP HTTP layer; B, the tools; C, the bot, the diary file, notes ingest, logs and parsers; D, the dashboard and the budget commands (the budget part was removed in phase 12); E, the payday plan and savings goals.** A8 and A9 are decided in [ADR 10](adr/0010-threat-model-decisions.md). Batches D and E found no bypass, and the live retest on the mini PC passed. The threats and their IDs come from the [threat model](threat-model.md). This file is where each test is recorded: what I tried, what should have happened, what did, and what I changed.
+Status: **about 230 attack tests (74 on the MCP HTTP layer, 49 on the tools, 76 on the bot, files, logs and parsers, one on the rules function, and 31 on the dashboard and the budget commands). Six batches are done (batch E also covers the pending charges): A, the MCP HTTP layer; B, the tools; C, the bot, the diary file, notes ingest, logs and parsers; D, the dashboard and the budget commands (the budget part was removed in phase 12); E, the payday plan and savings goals.** A8 and A9 are decided in [ADR 10](adr/0010-threat-model-decisions.md). Batches D and E found no bypass, and the live retest on the mini PC passed. The threats and their IDs come from the [threat model](threat-model.md). This file is where each test is recorded: what I tried, what should have happened, what did, and what I changed.
 
 ## Rules
 
@@ -74,6 +74,10 @@ Result is one of: not run, pass, finding fixed, accepted. Each entry gets the PR
 | E9, E10 | Debits, credits, transfers, rent and bills, transfers and investments, charges dated either side of the fortnight (in New Zealand time), a list 26 hours and 1 minute old, an empty list | Only counted charges in the fortnight, nothing from a stale list           | Six breaks failed their tests: the stale limit, the timezone, the transfer exclusion, the combined OVER flag, leaving settled out of the percent, and letting pending drive an alert                                                                                                      |
 | E11     | A 900 pending charge with no settled spending                                                                                                                                            | No alert                                                                   | Nothing sent. Making the alert read the combined figure failed the test                                                                                                                                                                                                                   |
 | E12     | A response of 1,001 items, a bad date, an amount as a string, and a 403                                                                                                                  | An error, with no token in it                                              | Each threw, and `meta` with an account number never reached the output                                                                                                                                                                                                                    |
+| F1      | A branch that adds a production dependency with a known advisory, as a draft pull request, next to a clean pull request                                                                  | The audit job fails on the vulnerable one and passes on the clean one      | The vulnerable pull request failed `audit` in 6 seconds while `check` passed, so the audit is what caught it. The clean one passed both                                                                                                                                                   |
+| F4      | `scripts/update.sh --dry-run` against the real image, an image with no signature, and an image signed by Sigstore's own identity, from my laptop and on the mini PC                      | The real one verifies, and the other two are refused                       | The real image said `signature ok`, the unsigned one `no signatures found`, the other `no matching CertificateIdentity`, with exit 1 for both refusals                                                                                                                                    |
+| F6      | A real update with a stay-up requirement that cannot be met (300 seconds in a 15 second wait), then a real update                                                                        | The first rolls back to the previous image, the second stays up            | The bot container's image id equalled `personal-ops:previous` after the rollback, the failed digest was recorded as rejected, and the second update stayed up and recorded `.deploy/current`                                                                                              |
+| F7      | The updater's heartbeat with the timer not yet installed                                                                                                                                 | The watchdog alerts 26 hours after the last run                            | `alerted_at` was 26 hours after the last success. Not planned as a test                                                                                                                                                                                                                   |
 
 ## Batch A: findings and observations
 
@@ -287,6 +291,28 @@ The pending charges came in as a second part of the same section, after Akahu's 
 - **The first leak test would have passed for the wrong reason.** The hostile texts I planted as pending descriptions also appear on the page as payee and category names from the settled data, so checking for them proved nothing. Each pending description now carries a canary prefix, and the test checks the canary never appears.
 - **A test as the owner would have missed a real failure.** The page runs as the read-only role. A query that read the description works as me and fails there with "permission denied". I added a test that runs the meter's pending query as that role.
 - **Not checked by eye.** I could not take a screenshot of the new dashboard segment before it went out.
+
+## Batch F: the supply chain and the deploy
+
+Section F of the threat model covers the path from a dependency to a running container. The checks were run on GitHub, on my laptop and on the mini PC, and there is no test file for them: the audit, the release workflow and the updater are workflows and a shell script. The updater has a `--dry-run` that verifies the signature and changes and sends nothing, which is what made the refusals safe to run.
+
+### Findings
+
+- **The image had 14 fixable high or critical findings, and I would have shipped them.** Trivy on the first image I built reported 7 in the copy of npm that the Node base image bundles (brace-expansion, ip-address, tar and undici, none of which my code runs) and 7 in `perl-base`, one critical. Debian had a fix, but the newest `node:24-slim` did not include it yet. The final image now removes npm, npx and corepack and upgrades `perl-base`, and the scan reports none.
+- **The first real update sent no message.** The deploy succeeded and the Telegram call failed with `curl: (35) Connection reset by peer`. A failed send was only logged, so the message was lost. The call now retries up to 4 times. This is the same flaky connection that logs `ECONNRESET` in the bot.
+- **Dependabot moved the image to Node 25, and I merged it.** The Docker updater treats `24-slim` to `25-slim` as an ordinary major update, and I had not written an ignore rule for it. Node 25 is not long term support, and CI tests on 24. The image went back to the pinned Node 24 digest in the release pull request, and an ignore rule keeps it there.
+
+### Observations that are not findings
+
+- **The database is not rolled back with the image.** The rollback restores the previous image, and a migration that has run stays. The 03:00 backup is the way back for data, and the updater runs at 03:30. This is recorded in ADR 14.
+- **A repeated failure alerts every night.** A refused or rolled-back image is skipped until a newer one appears, and the skip itself sends a message and counts as a failure for the watchdog.
+- **The first unattended nightly run is the part not yet proven,** as the first unattended briefing was in an earlier phase.
+
+### Mistakes in my own tests and changes
+
+- **The first "unsigned image" check never reached the signature.** I used my own pgvector mirror on GHCR, which is private, so the digest lookup failed first. A public image with no signature (`hello-world`) tested what I meant.
+- **The Dependabot file was published without being checked against its schema,** because I could not fetch the schema from my machine. GitHub validates it on merge.
+- **I wrote the Dependabot config without the `node` ignore rule,** and a bump I should have expected was merged before I noticed.
 
 ## Retest on the live server
 
