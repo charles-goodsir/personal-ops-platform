@@ -1,2 +1,5 @@
 packages:
   - packages/*
+# GHSA-27r3-jxmh-p828 (body-parser DoS, fixed in 2.4.0). Remove once express requires >=2.4.0.
+overrides:
+  body-parser: ^2.4.0
