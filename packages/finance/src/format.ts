@@ -104,6 +104,9 @@ export function formatPlan(plan: Plan, payday: string): string {
       lines.push(
         `  ${g.name}: ${usd(g.cents)}${g.reaches ? " (reaches its target)" : ""}`,
       );
+  // The saved amount is set by hand, so remind me how once the money has moved.
+  if (plan.goals.some((g) => g.cents > 0))
+    lines.push("Once it is in, record it: /goal saved <name> <new total>");
   if (plan.unallocated > 0)
     lines.push(`Not going to a goal: ${usd(plan.unallocated)}`);
   if (plan.shortfall > 0)

@@ -30,6 +30,7 @@ test("an under-target fortnight shows the surplus, the split and each goal", () 
       "Savings: $280.00 (usual $200.00 plus $80.00)",
       "Investments: $70.00 (usual $50.00 plus $20.00)",
       "  Holiday: $50.00 (reaches its target)",
+      "Once it is in, record it: /goal saved <name> <new total>",
       "Not going to a goal: $230.00",
     ].join("\n"),
   );
@@ -41,6 +42,23 @@ test("an over-target fortnight shows the usual amounts and by how much", () => {
   expect(text).toContain("Savings: $200.00\n");
   expect(text).not.toContain("usual");
   expect(formatPlan(plan(450), "2026-10-13")).toContain("(on target)");
+});
+
+test("the goal reminder only appears when a goal gets money", () => {
+  const reminder = "/goal saved <name> <new total>";
+  expect(
+    formatPlan(
+      plan(350, [{ name: "A", target: 1000, saved: 0, weight: 1 }]),
+      "2026-10-13",
+    ),
+  ).toContain(reminder);
+  expect(formatPlan(plan(350), "2026-10-13")).not.toContain(reminder);
+  expect(
+    formatPlan(
+      plan(500, [{ name: "A", target: 1000, saved: 0, weight: 1 }]),
+      "2026-10-13",
+    ),
+  ).toContain(reminder);
 });
 
 test("a pay that falls short says so, and unset items are listed", () => {
