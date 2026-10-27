@@ -125,6 +125,9 @@ export function formatPlan(
       lines.push(
         `  ${g.name}: ${usd(g.cents)}${g.reaches ? " (reaches its target)" : ""}`,
       );
+    // A full goal takes nothing, so without this line it would vanish.
+    else if (g.target > 0 && g.saved >= g.target)
+      lines.push(`  ${g.name}: full (${usd(g.saved)} of ${usd(g.target)})`);
   // The saved amount is set by hand, so remind me how once the money has moved.
   if (plan.goals.some((g) => g.cents > 0))
     lines.push("Once it is in, record it: /goal saved <name> <new total>");
