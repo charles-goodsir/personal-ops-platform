@@ -35,6 +35,18 @@ test("an under-target fortnight shows the surplus, the split and each goal", () 
   );
 });
 
+test("a goal that is already full is listed as full, not dropped", () => {
+  const text = formatPlan(
+    plan(350, [
+      { name: "Savings", target: 600, saved: 650, weight: 1 },
+      { name: "Holiday", target: 1000, saved: 0, weight: 1 },
+    ]),
+    "2026-10-13",
+  );
+  expect(text).toContain("  Savings: full ($650.00 of $600.00)");
+  expect(text).toContain("  Holiday: $280.00");
+});
+
 test("an over-target fortnight shows the usual amounts and by how much", () => {
   const text = formatPlan(plan(500), "2026-10-13");
   expect(text).toContain("of a $450.00 target ($50.00 over)");

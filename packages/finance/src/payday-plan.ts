@@ -20,7 +20,13 @@ const cents = (dollars: number) => Math.round(dollars * 100);
 export const nzDate = (at: Date) =>
   new Intl.DateTimeFormat("en-CA", { timeZone: "Pacific/Auckland" }).format(at);
 
-export type GoalShare = { name: string; cents: number; reaches: boolean };
+export type GoalShare = {
+  name: string;
+  cents: number; // what this payday gives it
+  reaches: boolean;
+  saved: number; // cents, as I last told the bot
+  target: number; // cents
+};
 
 export type Plan =
   | { ready: false; missing: string[] }
@@ -89,6 +95,8 @@ export function allocateToGoals(
       name: g.name,
       cents: give[i] as number,
       reaches: cents(g.saved) + (give[i] as number) >= cents(g.target),
+      saved: cents(g.saved),
+      target: cents(g.target),
     })),
     unallocated: pool,
   };

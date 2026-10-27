@@ -104,6 +104,9 @@ export function formatPlan(plan: Plan, payday: string): string {
       lines.push(
         `  ${g.name}: ${usd(g.cents)}${g.reaches ? " (reaches its target)" : ""}`,
       );
+    // A full goal takes nothing, so without this line it would vanish.
+    else if (g.target > 0 && g.saved >= g.target)
+      lines.push(`  ${g.name}: full (${usd(g.saved)} of ${usd(g.target)})`);
   if (plan.unallocated > 0)
     lines.push(`Not going to a goal: ${usd(plan.unallocated)}`);
   if (plan.shortfall > 0)
