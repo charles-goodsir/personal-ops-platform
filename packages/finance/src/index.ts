@@ -64,6 +64,8 @@ export {
 } from "./goals.js";
 export {
   allocateToGoals,
+  biggestCharge,
+  type BigCharge,
   computePlan,
   discretionary,
   fortnightSpent,

@@ -62,3 +62,18 @@ test("goals are listed with progress, date and weight, or a prompt when there ar
     ]),
   ).toBe("Goals:\n  Car: $100.00 of $800.00 (13%), weight 1");
 });
+
+test("one charge that is most of the spend gets its own line, a small one does not", () => {
+  const p = plan(350);
+  expect(
+    formatPlan(p, "2026-10-13", { category: "Entertainment", amount: 200 }),
+  ).toContain("One charge: Entertainment $200.00, 57% of the spend\n");
+  // under 30% of the spend, or under $100, says nothing
+  expect(
+    formatPlan(p, "2026-10-13", { category: "Eating out", amount: 90 }),
+  ).not.toContain("One charge");
+  expect(
+    formatPlan(plan(200), "2026-10-13", { category: "Other", amount: 99 }),
+  ).not.toContain("One charge");
+  expect(formatPlan(p, "2026-10-13", null)).not.toContain("One charge");
+});

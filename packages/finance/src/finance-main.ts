@@ -16,7 +16,7 @@ import { createClaudeClassifier } from "./claude.js";
 import { loadFinanceConfig } from "./config.js";
 import { createGoalsApi } from "./goals.js";
 import { sendPaydayMessage } from "./payday-message.js";
-import { fortnightSpent, paySeen } from "./payday-plan.js";
+import { biggestCharge, fortnightSpent, paySeen } from "./payday-plan.js";
 import { createPaydaySettingsApi } from "./payday-settings.js";
 import { syncPending } from "./pending.js";
 import { refreshBankData } from "./refresh.js";
@@ -78,6 +78,7 @@ async function alerts() {
       settings: paydaySettings,
       goals: paydayGoals,
       spent: (payday) => fortnightSpent(db, payday),
+      biggest: (payday) => biggestCharge(db, payday),
       paySeen: (payday, pay) => paySeen(db, payday, pay),
       send: sendAlert,
     });

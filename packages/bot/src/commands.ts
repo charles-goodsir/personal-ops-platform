@@ -5,6 +5,7 @@ import {
   formatSubscriptions,
   PERIODS,
   resolvePeriod,
+  type BigCharge,
   type FinanceApi,
   type GoalsApi,
   type PaydaySettingsApi,
@@ -54,6 +55,7 @@ export function createCommandHandler(deps: {
   payday: PaydaySettingsApi;
   goals: GoalsApi;
   spent: (payday: string) => Promise<number>;
+  biggest?: (payday: string) => Promise<BigCharge | null>;
   notes: Pick<NotesApi, "searchNotes">;
   briefing: () => Promise<string>;
   jobs: () => Promise<JobRun[]>;

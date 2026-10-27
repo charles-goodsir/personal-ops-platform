@@ -189,6 +189,30 @@ export async function fortnightSpent(db: Db, payday: string): Promise<number> {
   );
 }
 
+export type BigCharge = { category: string; amount: number };
+
+// The largest single charge in the fortnight ending on `payday`, among the
+// spending that counts toward the target. Category and dollars only: the payee
+// stays out of the message. Null when there is no spending.
+export async function biggestCharge(
+  db: Db,
+  payday: string,
+): Promise<BigCharge | null> {
+  const { from, to } = fortnightWindow(payday);
+  const r = dateRange(from, to);
+  const { rows } = await db.query<{ category: string | null; amount: string }>(
+    `SELECT category, -amount AS amount FROM transactions
+     WHERE date >= $1 AND date < $2 AND amount < 0
+       AND coalesce(category, '') <> ALL($3::text[])
+     ORDER BY amount LIMIT 1`,
+    [r.from, r.to, [...RENT_BILLS_CATEGORIES, "Transfers", "Investments"]],
+  );
+  const row = rows[0];
+  return row
+    ? { category: row.category ?? "Uncategorised", amount: Number(row.amount) }
+    : null;
+}
+
 // True when pay has arrived: an Income transaction dated payday that is at
 // least 90% of the pay I set. Akahu stamps it 23:59:59 on the day, so it is in
 // my data from the 00:05 sync that follows.

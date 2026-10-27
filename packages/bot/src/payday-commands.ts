@@ -1,4 +1,5 @@
 import {
+  type BigCharge,
   computePlan,
   formatGoals,
   formatPlan,
@@ -35,6 +36,7 @@ export function createPaydayCommands(deps: {
   payday: PaydaySettingsApi;
   goals: GoalsApi;
   spent: (payday: string) => Promise<number>;
+  biggest?: (payday: string) => Promise<BigCharge | null>;
 }) {
   // The API's name message is one of its own fixed sentences, so it is safe to show.
   const name = (words: string[]): [string, null] | [null, string] => {
@@ -61,6 +63,7 @@ export function createPaydayCommands(deps: {
         return formatPlan(
           computePlan(settings, await deps.spent(last), goals),
           last,
+          (await deps.biggest?.(last)) ?? null,
         );
       }
       // One or more <item> <value> pairs, so a whole setup can go in one
