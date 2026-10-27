@@ -200,16 +200,16 @@ export async function biggestCharge(
 ): Promise<BigCharge | null> {
   const { from, to } = fortnightWindow(payday);
   const r = dateRange(from, to);
-  const { rows } = await db.query<{ category: string | null; amount: string }>(
-    `SELECT category, -amount AS amount FROM transactions
+  const { rows } = await db.query<{ category: string | null; charge: string }>(
+    `SELECT category, -amount AS charge FROM transactions
      WHERE date >= $1 AND date < $2 AND amount < 0
        AND coalesce(category, '') <> ALL($3::text[])
-     ORDER BY amount LIMIT 1`,
+     ORDER BY charge DESC LIMIT 1`,
     [r.from, r.to, [...RENT_BILLS_CATEGORIES, "Transfers", "Investments"]],
   );
   const row = rows[0];
   return row
-    ? { category: row.category ?? "Uncategorised", amount: Number(row.amount) }
+    ? { category: row.category ?? "Uncategorised", amount: Number(row.charge) }
     : null;
 }
 
