@@ -1,5 +1,5 @@
 import type { Goal } from "./goals.js";
-import { fortnightWindow, type Plan } from "./payday-plan.js";
+import { fortnightWindow, type BigCharge, type Plan } from "./payday-plan.js";
 import type { Recurring } from "./insights.js";
 import type { CategorySpending, Spending } from "./read.js";
 
@@ -80,9 +80,29 @@ export function formatGoals(goals: Goal[]): string {
   return `Goals:\n${lines.join("\n")}`;
 }
 
+// One charge is worth a line when it is a large part of the spend, since a
+// single wrong category can move the whole total.
+const BIG_SHARE = 0.3;
+const BIG_MIN_CENTS = 10_000;
+
+function bigLine(spent: number, big: BigCharge | null): string[] {
+  if (!big) return [];
+  const cents = Math.round(big.amount * 100);
+  if (cents < BIG_MIN_CENTS || cents < spent * BIG_SHARE) return [];
+  const percent = Math.round((cents / spent) * 100);
+  return [
+    `One charge: ${big.category} ${usd(cents)}, ${percent}% of the spend`,
+  ];
+}
+
 // The payday message: what I spent against the target, and where the pay goes.
-// `payday` is the date the pay landed, "YYYY-MM-DD".
-export function formatPlan(plan: Plan, payday: string): string {
+// `payday` is the date the pay landed, "YYYY-MM-DD". `big` is the largest
+// single charge in the fortnight, if known.
+export function formatPlan(
+  plan: Plan,
+  payday: string,
+  big: BigCharge | null = null,
+): string {
   if (!plan.ready)
     return `Payday plan: still to set: ${plan.missing.join(", ")}. Use /payday set <item> <amount>.`;
   const { from, to } = fortnightWindow(payday);
@@ -95,6 +115,7 @@ export function formatPlan(plan: Plan, payday: string): string {
   const lines = [
     `Payday plan for ${payday}`,
     `Spent ${from} to ${to}: ${usd(plan.spent)} of a ${usd(plan.target)} target (${standing})`,
+    ...bigLine(plan.spent, big),
     `Rent and bills: ${usd(plan.rent)}`,
     `Savings: ${usd(plan.savings)}${plan.savings > plan.base.savings ? ` (usual ${usd(plan.base.savings)} plus ${usd(plan.savings - plan.base.savings)})` : ""}`,
     `Investments: ${usd(plan.invest)}${plan.invest > plan.base.invest ? ` (usual ${usd(plan.base.invest)} plus ${usd(plan.invest - plan.base.invest)})` : ""}`,
@@ -107,6 +128,9 @@ export function formatPlan(plan: Plan, payday: string): string {
     // A full goal takes nothing, so without this line it would vanish.
     else if (g.target > 0 && g.saved >= g.target)
       lines.push(`  ${g.name}: full (${usd(g.saved)} of ${usd(g.target)})`);
+  // The saved amount is set by hand, so remind me how once the money has moved.
+  if (plan.goals.some((g) => g.cents > 0))
+    lines.push("Once it is in, record it: /goal saved <name> <new total>");
   if (plan.unallocated > 0)
     lines.push(`Not going to a goal: ${usd(plan.unallocated)}`);
   if (plan.shortfall > 0)

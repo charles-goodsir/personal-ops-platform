@@ -1,4 +1,5 @@
 import type { Goal } from "./goals.js";
+import type { BigCharge } from "./payday-plan.js";
 import { formatPlan } from "./format.js";
 import { computePlan, lastPayday, nzDate } from "./payday-plan.js";
 import type { PaydaySettings } from "./payday-settings.js";
@@ -24,6 +25,7 @@ export async function sendPaydayMessage(
     };
     goals: { listGoals(): Promise<Goal[]> };
     spent: (payday: string) => Promise<number>;
+    biggest?: (payday: string) => Promise<BigCharge | null>;
     paySeen: (payday: string, pay: number) => Promise<boolean>;
     send: (text: string) => Promise<void>;
   },
@@ -50,6 +52,7 @@ export async function sendPaydayMessage(
     text = formatPlan(
       computePlan(settings, await deps.spent(payday), goals),
       payday,
+      (await deps.biggest?.(payday)) ?? null,
     );
     if (!(await deps.paySeen(payday, settings.pay as number)))
       text += "\nThe pay is not in my data yet, so this uses the pay you set.";

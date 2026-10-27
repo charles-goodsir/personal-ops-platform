@@ -2,6 +2,7 @@ import { createTestDb, type Db } from "@ops/core";
 import { afterAll, beforeAll, beforeEach, expect, test } from "vitest";
 import {
   allocateToGoals,
+  biggestCharge,
   computePlan,
   discretionary,
   fortnightSpent,
@@ -270,5 +271,32 @@ test.skipIf(!process.env.DATABASE_URL)(
         [`t${i}`, date, amount, category],
       );
     expect(await fortnightSpent(getDb(), "2026-10-27")).toBe(60);
+  },
+);
+
+test.skipIf(!process.env.DATABASE_URL)(
+  "the biggest charge is the largest counted one: not outside the window, rent and bills, transfers, investments or income",
+  async () => {
+    expect(await biggestCharge(getDb(), "2026-10-27")).toBeNull();
+    const rows: [string, number, string | null][] = [
+      ["2026-10-13", -999, "Groceries"], // the day before the window
+      ["2026-10-14", -10, "Groceries"],
+      ["2026-10-20", -45, null], // uncategorised counts
+      ["2026-10-27", -30, "Eating out"],
+      ["2026-10-15", -400, "Housing"],
+      ["2026-10-18", -500, "Transfers"],
+      ["2026-10-19", -150, "Investments"],
+      ["2026-10-21", 1000, "Income"],
+    ];
+    for (const [i, [date, amount, category]] of rows.entries())
+      await getDb().query(
+        `INSERT INTO transactions (akahu_id, account_id, date, description, amount, type, category, synced_at)
+         VALUES ($1, 'acc', $2::date + time '10:59', 'X', $3, 'EFTPOS', $4, now())`,
+        [`t${i}`, date, amount, category],
+      );
+    expect(await biggestCharge(getDb(), "2026-10-27")).toEqual({
+      category: "Uncategorised",
+      amount: 45,
+    });
   },
 );

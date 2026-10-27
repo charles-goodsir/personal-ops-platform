@@ -30,6 +30,7 @@ test("an under-target fortnight shows the surplus, the split and each goal", () 
       "Savings: $280.00 (usual $200.00 plus $80.00)",
       "Investments: $70.00 (usual $50.00 plus $20.00)",
       "  Holiday: $50.00 (reaches its target)",
+      "Once it is in, record it: /goal saved <name> <new total>",
       "Not going to a goal: $230.00",
     ].join("\n"),
   );
@@ -55,6 +56,23 @@ test("an over-target fortnight shows the usual amounts and by how much", () => {
   expect(formatPlan(plan(450), "2026-10-13")).toContain("(on target)");
 });
 
+test("the goal reminder only appears when a goal gets money", () => {
+  const reminder = "/goal saved <name> <new total>";
+  expect(
+    formatPlan(
+      plan(350, [{ name: "A", target: 1000, saved: 0, weight: 1 }]),
+      "2026-10-13",
+    ),
+  ).toContain(reminder);
+  expect(formatPlan(plan(350), "2026-10-13")).not.toContain(reminder);
+  expect(
+    formatPlan(
+      plan(500, [{ name: "A", target: 1000, saved: 0, weight: 1 }]),
+      "2026-10-13",
+    ),
+  ).toContain(reminder);
+});
+
 test("a pay that falls short says so, and unset items are listed", () => {
   expect(formatPlan(plan(0, [], { pay: 500 }), "2026-10-13")).toContain(
     "The pay is $50.00 short of rent and the usual savings and investments.",
@@ -73,4 +91,19 @@ test("goals are listed with progress, date and weight, or a prompt when there ar
       { name: "Car", target: 800, saved: 100, weight: 1, due: null },
     ]),
   ).toBe("Goals:\n  Car: $100.00 of $800.00 (13%), weight 1");
+});
+
+test("one charge that is most of the spend gets its own line, a small one does not", () => {
+  const p = plan(350);
+  expect(
+    formatPlan(p, "2026-10-13", { category: "Entertainment", amount: 200 }),
+  ).toContain("One charge: Entertainment $200.00, 57% of the spend\n");
+  // under 30% of the spend, or under $100, says nothing
+  expect(
+    formatPlan(p, "2026-10-13", { category: "Eating out", amount: 90 }),
+  ).not.toContain("One charge");
+  expect(
+    formatPlan(plan(200), "2026-10-13", { category: "Other", amount: 99 }),
+  ).not.toContain("One charge");
+  expect(formatPlan(p, "2026-10-13", null)).not.toContain("One charge");
 });

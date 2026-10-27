@@ -20,6 +20,7 @@ import {
   createFinanceApi,
   createGoalsApi,
   createPaydaySettingsApi,
+  biggestCharge,
   fortnightSpent,
 } from "@ops/finance";
 import { createEmbedder, createNotesApi } from "@ops/knowledge-base";
@@ -47,6 +48,7 @@ const bot = createBot({
     payday: createPaydaySettingsApi(db),
     goals: createGoalsApi(db),
     spent: (payday) => fortnightSpent(db, payday),
+    biggest: (payday) => biggestCharge(db, payday),
     notes: createNotesApi({
       db,
       embed: createEmbedder({

@@ -59,6 +59,7 @@ test("/payday works out the plan for the latest payday, with what I spent", asyn
       "Savings: $280.00 (usual $200.00 plus $80.00)",
       "Investments: $70.00 (usual $50.00 plus $20.00)",
       "  Holiday: $280.00",
+      "Once it is in, record it: /goal saved <name> <new total>",
     ].join("\n"),
   );
 });
