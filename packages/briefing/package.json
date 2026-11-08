@@ -17,6 +17,6 @@
     "@ops/core": "workspace:*",
     "@ops/finance": "workspace:*",
     "@ops/knowledge-base": "workspace:*",
-    "zod": "4.6.6"
+    "zod": "4.6.7"
   }
 }
