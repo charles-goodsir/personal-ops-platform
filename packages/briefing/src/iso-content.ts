@@ -246,4 +246,347 @@ export const ISO_ENTRIES: IsoEntry[] = [
     question:
       "What is the difference between a correction and a corrective action?",
   },
+  {
+    id: "A.5.1",
+    title: "Policies for information security",
+    area: "Annex A, Organizational",
+    asks: "Have an overall security policy plus topic-specific ones, approved by management, shared with staff and reviewed when things change.",
+    stack:
+      "I have SECURITY.md and README limits, but no internal policy set. I would start with access, secrets and acceptable use.",
+    question:
+      "What is the difference between a policy, a standard and a procedure?",
+  },
+  {
+    id: "A.5.2",
+    title: "Information security roles and responsibilities",
+    area: "Annex A, Organizational",
+    asks: "Define and allocate security responsibilities so everyone knows what they own.",
+    stack:
+      "I own everything, so the roles collapse into one person. Writing them out would show which hat I wear for each task.",
+    question: "How would you document who owns a risk?",
+  },
+  {
+    id: "A.5.3",
+    title: "Segregation of duties",
+    area: "Annex A, Organizational",
+    asks: "Keep conflicting duties and areas of responsibility apart to reduce the chance of fraud or error going unnoticed.",
+    stack:
+      "A protected main with pull requests is a partial control, but I approve my own merges. CI is the only second pair of eyes.",
+    question:
+      "What compensating control would you add when a team is too small to separate duties?",
+  },
+  {
+    id: "A.5.4",
+    title: "Management responsibilities",
+    area: "Annex A, Organizational",
+    asks: "Management must make sure staff follow the security policies and procedures.",
+    stack:
+      "Nobody to manage, so my equivalent is enforcing rules through tooling: the pre-commit secret scan and required CI checks.",
+    question:
+      "Why is enforcement by tooling stronger than enforcement by instruction?",
+  },
+  {
+    id: "A.5.5",
+    title: "Contact with authorities",
+    area: "Annex A, Organizational",
+    asks: "Know which authorities to contact (regulators, police, emergency services) and when, and keep that contact information ready.",
+    stack:
+      "I have not written one down. For a breach involving personal data in New Zealand, I would need to know who to notify.",
+    question:
+      "Name two authorities an organization may need to contact after a data breach.",
+  },
+  {
+    id: "A.5.6",
+    title: "Contact with special interest groups",
+    area: "Annex A, Organizational",
+    asks: "Stay in touch with security forums and professional bodies so you hear about threats and good practice.",
+    stack:
+      "GitHub security advisories and Dependabot alerts are my feed, and they caught the body-parser advisory.",
+    question:
+      "What would you do when you learn about a new vulnerability through one of these groups?",
+  },
+  {
+    id: "A.5.7",
+    title: "Threat intelligence",
+    area: "Annex A, Organizational",
+    asks: "Collect and analyse information about threats so you can act on it, at strategic, tactical and operational levels.",
+    stack:
+      "Advisory feeds drive my dependency scanning. The threat model is where I turn that into decisions about my own system.",
+    question: "What turns threat information into threat intelligence?",
+  },
+  {
+    id: "A.5.8",
+    title: "Information security in project management",
+    area: "Annex A, Organizational",
+    asks: "Build security into every project, whatever its type, from the start.",
+    stack:
+      "Each phase of my project gets a threat model section and an attack batch before it is called done.",
+    question: "At which project stage is security cheapest to add?",
+  },
+  {
+    id: "A.5.9",
+    title: "Inventory of information and other associated assets",
+    area: "Annex A, Organizational",
+    asks: "Keep an inventory of information and the assets that handle it, each with an owner.",
+    stack:
+      "My services and data are listed in the README and compose file, but there is no formal asset register.",
+    question: "What fields would you put in an asset register?",
+  },
+  {
+    id: "A.5.10",
+    title: "Acceptable use of information and other associated assets",
+    area: "Annex A, Organizational",
+    asks: "Write rules for how information and assets may be used and handled, and make people aware of them.",
+    stack:
+      "I have personal rules such as never putting secrets in chat. Nothing written for anyone else.",
+    question:
+      "Who needs to agree to an acceptable use policy, and how is that recorded?",
+  },
+  {
+    id: "A.5.11",
+    title: "Return of assets",
+    area: "Annex A, Organizational",
+    asks: "When people leave or change role, make sure they hand back the organization's assets.",
+    stack:
+      "Not applicable at one person. The offline Azure DevOps agent and its token I still have to revoke is the same idea.",
+    question: "What is on a leaver checklist besides the laptop?",
+  },
+  {
+    id: "A.5.12",
+    title: "Classification of information",
+    area: "Annex A, Organizational",
+    asks: "Classify information by confidentiality, integrity and availability needs and legal requirements.",
+    stack:
+      "My bank data and notes are my most sensitive. The model only ever sees masked descriptions and totals, which is classification driving a control.",
+    question: "How does a classification scheme change what you do with data?",
+  },
+  {
+    id: "A.5.13",
+    title: "Labelling of information",
+    area: "Annex A, Organizational",
+    asks: "Label information in line with the classification scheme so people know how to handle it.",
+    stack:
+      "I do not label anything. The nearest thing is keeping finance data in its own tables behind a read-only role.",
+    question:
+      "Why might labelling be more useful for paper than for databases?",
+  },
+  {
+    id: "A.5.14",
+    title: "Information transfer",
+    area: "Annex A, Organizational",
+    asks: "Set rules for moving information inside the organization and to others, whatever the channel.",
+    stack:
+      "The bot only answers my chat, finance data only goes out masked, and signed images move by digest.",
+    question: "Name three transfer channels and one control for each.",
+  },
+  {
+    id: "A.5.15",
+    title: "Access control",
+    area: "Annex A, Organizational",
+    asks: "Set and apply rules for who may access information and assets, based on business and security needs.",
+    stack:
+      "The bot checks private chat, chat ID and sender ID. The MCP server needs a bearer token. The dashboard is only on localhost.",
+    question: "What does need-to-know mean in practice?",
+  },
+  {
+    id: "A.5.16",
+    title: "Identity management",
+    area: "Annex A, Organizational",
+    asks: "Manage the whole life of identities: create, change and remove them.",
+    stack:
+      "Few identities: me, the deploy key and the CI identity that signs images. The deploy key is read-only.",
+    question: "What goes wrong when service identities are not tracked?",
+  },
+  {
+    id: "A.5.17",
+    title: "Authentication information",
+    area: "Annex A, Organizational",
+    asks: "Control how secrets used to prove identity (passwords, tokens, keys) are allocated and handled.",
+    stack:
+      "Tokens live in .env on the box, are at least 32 characters, and can be rotated by adding a new one first. I did paste two into chat once.",
+    question: "How would you rotate a leaked credential without downtime?",
+  },
+  {
+    id: "A.5.18",
+    title: "Access rights",
+    area: "Annex A, Organizational",
+    asks: "Provide, review, change and remove access rights according to the access control rules.",
+    stack:
+      "The dashboard database role is SELECT-only. I have not scheduled access reviews.",
+    question: "How often should access rights be reviewed, and by whom?",
+  },
+  {
+    id: "A.5.19",
+    title: "Information security in supplier relationships",
+    area: "Annex A, Organizational",
+    asks: "Set processes to manage the security risks of using suppliers.",
+    stack:
+      "My suppliers are Akahu, Anthropic, GitHub, Telegram and Open-Meteo. I assess them loosely, in ADRs, not in a register.",
+    question: "How would you decide how much scrutiny a supplier deserves?",
+  },
+  {
+    id: "A.5.20",
+    title: "Addressing information security within supplier agreements",
+    area: "Annex A, Organizational",
+    asks: "Agree security requirements with each supplier, based on the type of relationship.",
+    stack:
+      "I accept standard terms. The practical control is limiting what I send them.",
+    question: "What would you ask for in a contract with a cloud supplier?",
+  },
+  {
+    id: "A.5.21",
+    title: "Managing information security in the ICT supply chain",
+    area: "Annex A, Organizational",
+    asks: "Manage security risks in the chain of products and services you depend on.",
+    stack:
+      "This is my Phase 14: Dependabot with a cooldown, an audit job, pinned digests and checksums, signed images.",
+    question: "How does a signature help and where does it stop helping?",
+  },
+  {
+    id: "A.5.22",
+    title: "Monitoring, review and change management of supplier services",
+    area: "Annex A, Organizational",
+    asks: "Regularly check that suppliers still meet the agreed security level and manage their changes.",
+    stack:
+      "The watchdog tells me when a supplier-dependent job fails. I do not review the suppliers themselves.",
+    question: "What would you review about a supplier every year?",
+  },
+  {
+    id: "A.5.23",
+    title: "Information security for use of cloud services",
+    area: "Annex A, Organizational",
+    asks: "Set rules to acquire, use, manage and leave cloud services securely.",
+    stack:
+      "I use GitHub, its Actions and a container registry. The platform itself runs at home on purpose.",
+    question: "What do you need to agree before you leave a cloud service?",
+  },
+  {
+    id: "A.5.24",
+    title: "Information security incident management planning and preparation",
+    area: "Annex A, Organizational",
+    asks: "Plan how incidents will be managed: roles, process and communication, before one happens.",
+    stack:
+      "My plan is informal: the watchdog alerts me and the /status command shows state. No written playbook.",
+    question: "What belongs in the first page of an incident plan?",
+  },
+  {
+    id: "A.5.25",
+    title: "Assessment and decision on information security events",
+    area: "Annex A, Organizational",
+    asks: "Assess each security event and decide whether it counts as an incident.",
+    stack:
+      "A failing audit job is an event. It only becomes an incident if it shows a real flaw, as the advisory did.",
+    question: "What is the difference between an event and an incident?",
+  },
+  {
+    id: "A.5.26",
+    title: "Response to information security incidents",
+    area: "Annex A, Organizational",
+    asks: "Respond to incidents following the documented procedures.",
+    stack:
+      "The updater rolls back by itself if a new image does not stay up. That is an automated response.",
+    question: "What should you do in the first hour of a suspected breach?",
+  },
+  {
+    id: "A.5.27",
+    title: "Learning from information security incidents",
+    area: "Annex A, Organizational",
+    asks: "Use what incidents teach you to strengthen controls.",
+    stack:
+      "The lost Telegram message led to a retry, and the watchdog caught a forgotten timer that I then wrote up.",
+    question: "How do you prove lessons were actually applied?",
+  },
+  {
+    id: "A.5.28",
+    title: "Collection of evidence",
+    area: "Annex A, Organizational",
+    asks: "Have procedures to identify, collect and preserve evidence of security events.",
+    stack:
+      "Job runs are recorded in a table and the MCP server logs a line for each request.",
+    question: "Why does evidence need a chain of custody?",
+  },
+  {
+    id: "A.5.29",
+    title: "Information security during disruption",
+    area: "Annex A, Organizational",
+    asks: "Plan how to keep security in place while operations are disrupted.",
+    stack:
+      "During the house move the firewall stayed closed to the new network until I allowed it, which is security holding during disruption.",
+    question: "What security controls tend to get dropped in an emergency?",
+  },
+  {
+    id: "A.5.30",
+    title: "ICT readiness for business continuity",
+    area: "Annex A, Organizational",
+    asks: "Plan and test ICT so business continuity goals can be met.",
+    stack:
+      "Local backups exist. Off-box backups are on my open-risk list, and a restore test would prove them.",
+    question: "What does a backup have to prove before you can rely on it?",
+  },
+  {
+    id: "A.5.31",
+    title: "Legal, statutory, regulatory and contractual requirements",
+    area: "Annex A, Organizational",
+    asks: "Identify the legal and contractual rules that apply and keep up with them.",
+    stack:
+      "New Zealand's privacy law covers personal information. I have not mapped it to my platform.",
+    question: "How would you keep a register of legal requirements current?",
+  },
+  {
+    id: "A.5.32",
+    title: "Intellectual property rights",
+    area: "Annex A, Organizational",
+    asks: "Protect intellectual property, including by respecting licences.",
+    stack:
+      "I avoid copying the standard's text, and my repo's dependencies come with their licences.",
+    question:
+      "What is the risk of using an open source package with the wrong licence?",
+  },
+  {
+    id: "A.5.33",
+    title: "Protection of records",
+    area: "Annex A, Organizational",
+    asks: "Protect records from loss, destruction, falsification and unauthorised access or release.",
+    stack:
+      "Git history gives me tamper-evident records for decisions and docs. Database records rely on backups.",
+    question: "How do you show a record has not been altered?",
+  },
+  {
+    id: "A.5.34",
+    title: "Privacy and protection of PII",
+    area: "Annex A, Organizational",
+    asks: "Meet your obligations to protect personal information, as the law and contracts require.",
+    stack:
+      "Bank data stays in my own database. Only masked descriptions and totals go to the model API.",
+    question:
+      "What is the difference between data minimisation and data masking?",
+  },
+  {
+    id: "A.5.35",
+    title: "Independent review of information security",
+    area: "Annex A, Organizational",
+    asks: "Have the security approach reviewed independently at planned intervals and after big changes.",
+    stack:
+      "My reviews are self-reviews, which is the gap. A friend or a paid tester would give me independence.",
+    question: "What makes a review independent?",
+  },
+  {
+    id: "A.5.36",
+    title:
+      "Compliance with policies, rules and standards for information security",
+    area: "Annex A, Organizational",
+    asks: "Regularly check that people and systems follow your security policies and standards.",
+    stack:
+      "CI is the continuous check: secret scan, audit, tests. It enforces my rules on every change.",
+    question: "How would you check compliance on a system with no pipeline?",
+  },
+  {
+    id: "A.5.37",
+    title: "Documented operating procedures",
+    area: "Annex A, Organizational",
+    asks: "Document operating procedures and make them available to whoever needs them.",
+    stack:
+      "The README's Deploys section, the updater script's header and the demo script are my runbooks.",
+    question: "What makes a runbook usable at 3am?",
+  },
 ];
