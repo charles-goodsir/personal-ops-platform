@@ -589,4 +589,207 @@ export const ISO_ENTRIES: IsoEntry[] = [
       "The README's Deploys section, the updater script's header and the demo script are my runbooks.",
     question: "What makes a runbook usable at 3am?",
   },
+  {
+    id: "A.6.1",
+    title: "Screening",
+    area: "Annex A, People",
+    asks: "Check the background of candidates before they join, in proportion to the role and within the law.",
+    stack:
+      "No hires, so nothing to screen. The same idea applies to anyone I would give access to the repo or the box.",
+    question:
+      "How far should screening go for someone who will have admin access?",
+  },
+  {
+    id: "A.6.2",
+    title: "Terms and conditions of employment",
+    area: "Annex A, People",
+    asks: "Put security responsibilities into the contracts that staff and contractors sign.",
+    stack:
+      "Not applicable as a one-person project. It would sit alongside my acceptable use rules.",
+    question: "Which security duties should still apply after someone leaves?",
+  },
+  {
+    id: "A.6.3",
+    title: "Information security awareness, education and training",
+    area: "Annex A, People",
+    asks: "Give people appropriate security training, refreshed regularly and matched to their role.",
+    stack:
+      "My study notes and Field Notes are my own training record. Spending the time is the control.",
+    question:
+      "How would you tailor training for developers compared with finance staff?",
+  },
+  {
+    id: "A.6.4",
+    title: "Disciplinary process",
+    area: "Annex A, People",
+    asks: "Have a formal, communicated process for acting against people who break security rules.",
+    stack:
+      "Not applicable to me. The tooling version is that a failing check blocks a merge.",
+    question: "Why must the disciplinary process be communicated beforehand?",
+  },
+  {
+    id: "A.6.5",
+    title: "Responsibilities after termination or change of employment",
+    area: "Annex A, People",
+    asks: "Define which security duties continue after someone leaves or changes role, and tell them.",
+    stack:
+      "The matching task for me is revoking things that outlive their use, like an old agent token.",
+    question: "What access should be removed on the day someone changes role?",
+  },
+  {
+    id: "A.6.6",
+    title: "Confidentiality or non-disclosure agreements",
+    area: "Annex A, People",
+    asks: "Use signed confidentiality agreements that reflect what the organization needs to protect.",
+    stack:
+      "My repo is public, so nothing confidential belongs in it. Secret scanning and a pre-commit hook enforce that.",
+    question: "When would you require an NDA from a supplier?",
+  },
+  {
+    id: "A.6.7",
+    title: "Remote working",
+    area: "Annex A, People",
+    asks: "Protect information accessed, processed or stored outside the organization's own premises.",
+    stack:
+      "I reach the box over SSH, and the dashboard is only reachable through an SSH tunnel. Nothing sits open to the internet.",
+    question: "What are the top three controls for a remote worker's laptop?",
+  },
+  {
+    id: "A.6.8",
+    title: "Information security event reporting",
+    area: "Annex A, People",
+    asks: "Give people a clear, easy channel to report security events they see or suspect, quickly.",
+    stack:
+      "SECURITY.md offers private vulnerability reporting to outsiders, and the watchdog reports events to me.",
+    question:
+      "What makes people hesitate to report an event, and how do you fix it?",
+  },
+  {
+    id: "A.7.1",
+    title: "Physical security perimeters",
+    area: "Annex A, Physical",
+    asks: "Define the boundaries of areas that hold information and protect them with suitable barriers.",
+    stack:
+      "My perimeter is my home. The box is only as physically safe as the house.",
+    question: "How would you decide where a perimeter should be?",
+  },
+  {
+    id: "A.7.2",
+    title: "Physical entry",
+    area: "Annex A, Physical",
+    asks: "Control who can enter secure areas through entry controls and access points.",
+    stack:
+      "Anyone in the house could touch the box. The mitigation is that the data is only useful with my credentials, though there is no disk encryption.",
+    question: "How do visitors differ from staff in an access control scheme?",
+  },
+  {
+    id: "A.7.3",
+    title: "Securing offices, rooms and facilities",
+    area: "Annex A, Physical",
+    asks: "Design and apply physical security for the rooms and buildings that hold information.",
+    stack:
+      "Home setup, so there is no dedicated room. That is an accepted limit.",
+    question: "What would change if the server room were in a shared building?",
+  },
+  {
+    id: "A.7.4",
+    title: "Physical security monitoring",
+    area: "Annex A, Physical",
+    asks: "Monitor premises continuously for unauthorised physical access.",
+    stack:
+      "I do not monitor the room. My dead-man's switch only tells me when the box stops reporting.",
+    question:
+      "What is the difference between detecting and preventing physical intrusion?",
+  },
+  {
+    id: "A.7.5",
+    title: "Protecting against physical and environmental threats",
+    area: "Annex A, Physical",
+    asks: "Protect against fire, flood, heat, tampering and other natural and human physical threats.",
+    stack:
+      "Nothing specific. A fire or flood at home would take the box and any local backup with it, which is why off-box backups are on my open list.",
+    question: "Which of these threats does an off-site backup protect against?",
+  },
+  {
+    id: "A.7.6",
+    title: "Working in secure areas",
+    area: "Annex A, Physical",
+    asks: "Set rules for working inside secure areas, such as supervision and no unauthorised recording.",
+    stack: "No secure area exists in my setup, so this does not apply.",
+    question: "When would you restrict phones or cameras in a secure area?",
+  },
+  {
+    id: "A.7.7",
+    title: "Clear desk and clear screen",
+    area: "Annex A, Physical",
+    asks: "Keep papers, media and screens from exposing information to people who should not see it.",
+    stack:
+      "My phone shows the bot chat with spending in it. A screen lock on the phone and Mac is the control that would matter, and I have not written it down.",
+    question:
+      "How do you make a clear desk policy practical in an open office?",
+  },
+  {
+    id: "A.7.8",
+    title: "Equipment siting and protection",
+    area: "Annex A, Physical",
+    asks: "Place and protect equipment to reduce environmental risks and unauthorised access.",
+    stack:
+      "The box sits at home and uses Wi-Fi through a USB adapter, and my firewall rules are written around that adapter.",
+    question: "What should you consider when choosing where a server goes?",
+  },
+  {
+    id: "A.7.9",
+    title: "Security of assets off-premises",
+    area: "Annex A, Physical",
+    asks: "Protect devices and assets that leave the main premises.",
+    stack:
+      "My Mac travels and holds the repo clone and a development database. Disk encryption and a screen lock matter most there.",
+    question: "What happens if a company laptop is lost on a train?",
+  },
+  {
+    id: "A.7.10",
+    title: "Storage media",
+    area: "Annex A, Physical",
+    asks: "Manage storage media through its life, from use to transport to disposal, in line with classification.",
+    stack:
+      "My backups sit on the same box for now. Any external drive I add will need encryption and a place.",
+    question: "How would you handle a USB stick found in the car park?",
+  },
+  {
+    id: "A.7.11",
+    title: "Supporting utilities",
+    area: "Annex A, Physical",
+    asks: "Protect equipment from power cuts and other utility failures.",
+    stack:
+      "A power cut or a dropped Wi-Fi link would stop my jobs, and the dead-man's switch would tell me.",
+    question: "What does a UPS protect against, and what does it not?",
+  },
+  {
+    id: "A.7.12",
+    title: "Cabling security",
+    area: "Annex A, Physical",
+    asks: "Protect power and network cabling from interception, interference and damage.",
+    stack:
+      "My box talks over Wi-Fi, so the radio link is the exposure. Firewall and SSH keys are the controls.",
+    question:
+      "Why might wireless traffic need different protection from cabled traffic?",
+  },
+  {
+    id: "A.7.13",
+    title: "Equipment maintenance",
+    area: "Annex A, Physical",
+    asks: "Maintain equipment correctly so it stays available and its information stays safe.",
+    stack:
+      "I upgraded the box, turned on unattended security updates and run a nightly image update.",
+    question: "What should happen to a disk before it goes for repair?",
+  },
+  {
+    id: "A.7.14",
+    title: "Secure disposal or re-use of equipment",
+    area: "Annex A, Physical",
+    asks: "Check equipment holding storage media and remove or securely overwrite sensitive data before disposal or re-use.",
+    stack:
+      "The box holds bank transactions and has no disk encryption, so a wipe would be needed before it left the house.",
+    question: "Why is deleting files not the same as securely erasing a disk?",
+  },
 ];
