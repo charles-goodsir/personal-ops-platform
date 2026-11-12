@@ -792,4 +792,167 @@ export const ISO_ENTRIES: IsoEntry[] = [
       "The box holds bank transactions and has no disk encryption, so a wipe would be needed before it left the house.",
     question: "Why is deleting files not the same as securely erasing a disk?",
   },
+  {
+    id: "A.8.1",
+    title: "User endpoint devices",
+    area: "Annex A, Technological",
+    asks: "Protect the information on and reachable from laptops, phones and other devices people use.",
+    stack:
+      "My Mac holds the repo, a dev database and my access to the box. It has no managed device policy, and it is the weakest link here.",
+    question:
+      "What baseline would you require on every endpoint before it touches company data?",
+  },
+  {
+    id: "A.8.2",
+    title: "Privileged access rights",
+    area: "Annex A, Technological",
+    asks: "Limit and manage powerful access, and give it only to those who need it.",
+    stack:
+      "My own account on the box is in the docker and sudo groups, which is effectively root. The containers run as non-root with capabilities dropped.",
+    question: "Why is membership of the docker group a privilege concern?",
+  },
+  {
+    id: "A.8.3",
+    title: "Information access restriction",
+    area: "Annex A, Technological",
+    asks: "Restrict access to information and functions in line with the access control rules.",
+    stack:
+      "The bot answers one chat, the MCP server needs a token, and the dashboard reads through a SELECT-only database role.",
+    question:
+      "How do you enforce read-only access at the database, not just in the app?",
+  },
+  {
+    id: "A.8.4",
+    title: "Access to source code",
+    area: "Annex A, Technological",
+    asks: "Control who can read and change source code, development tools and libraries.",
+    stack:
+      "The repo is public to read, but main is protected: changes arrive by pull request with required checks, and the box has a read-only deploy key.",
+    question:
+      "What is the risk if anyone can push straight to the main branch?",
+  },
+  {
+    id: "A.8.5",
+    title: "Secure authentication",
+    area: "Annex A, Technological",
+    asks: "Use authentication techniques and procedures that fit the sensitivity of what is protected.",
+    stack:
+      "SSH keys and long bearer tokens. SSH still accepts a password, which I accepted because the box is LAN-only with fail2ban. No second factor.",
+    question:
+      "When is a password plus network restriction a reasonable risk decision?",
+  },
+  {
+    id: "A.8.6",
+    title: "Capacity management",
+    area: "Annex A, Technological",
+    asks: "Watch and plan resource use (CPU, memory, storage, bandwidth) so systems keep working as demand changes.",
+    stack:
+      "A small box runs a handful of services and a local embedding model. I rate-limit the bot, but I do not alert on disk or memory.",
+    question:
+      "Which capacity failure would hurt most on your platform, and how would you detect it?",
+  },
+  {
+    id: "A.8.7",
+    title: "Protection against malware",
+    area: "Annex A, Technological",
+    asks: "Put detection, prevention and user awareness in place against malware.",
+    stack:
+      "Trivy checks my image for known vulnerabilities, which is not the same as malware scanning. I have not set up malware scanning on the box beyond that.",
+    question:
+      "What is the difference between a vulnerability scan and a malware scan?",
+  },
+  {
+    id: "A.8.8",
+    title: "Management of technical vulnerabilities",
+    area: "Annex A, Technological",
+    asks: "Find out about vulnerabilities in what you run, judge your exposure and act on it in good time.",
+    stack:
+      "This is my strongest area: an audit workflow, Dependabot with a cooldown, and a Trivy gate. They caught 14 image findings and the body-parser advisory.",
+    question: "How do you decide which vulnerabilities to fix first?",
+  },
+  {
+    id: "A.8.9",
+    title: "Configuration management",
+    area: "Annex A, Technological",
+    asks: "Define, record, apply and review the secure configuration of hardware, software, services and networks.",
+    stack:
+      "The compose file and image are in git with pinned digests. My firewall rules live only on the box, so they are the least managed config, as the house move showed.",
+    question: "How would you detect configuration drift on a server?",
+  },
+  {
+    id: "A.8.10",
+    title: "Information deletion",
+    area: "Annex A, Technological",
+    asks: "Delete information that is no longer needed, from systems, devices and media.",
+    stack:
+      "A setting limits how far back finance history is kept, and I pruned older rows. Pending charges are replaced at every sync.",
+    question:
+      "How would you prove data was really deleted, including from backups?",
+  },
+  {
+    id: "A.8.11",
+    title: "Data masking",
+    area: "Annex A, Technological",
+    asks: "Mask data, in line with access rules and business needs, so people and systems only see what they need.",
+    stack:
+      "Bank descriptions have digits masked before they go to the model API, so account-like numbers never leave.",
+    question:
+      "What is the difference between masking, tokenisation and encryption?",
+  },
+  {
+    id: "A.8.12",
+    title: "Data leakage prevention",
+    area: "Annex A, Technological",
+    asks: "Apply measures that stop sensitive information leaking out of systems, networks and devices.",
+    stack:
+      "Notes are embedded locally, finance data leaves only masked, and the bot has no free-text input that could be turned against me.",
+    question: "Name three channels through which data typically leaks.",
+  },
+  {
+    id: "A.8.13",
+    title: "Information backup",
+    area: "Annex A, Technological",
+    asks: "Keep backups of information, software and systems and test them regularly.",
+    stack:
+      "A backup job runs and the watchdog checks it ran. The copies are on the same box, so off-box backups and a restore test are still to do.",
+    question: "Why does an untested backup not count as a backup?",
+  },
+  {
+    id: "A.8.14",
+    title: "Redundancy of information processing facilities",
+    area: "Annex A, Technological",
+    asks: "Provide enough redundancy to meet availability requirements.",
+    stack:
+      "One box, so no redundancy, which I have treated as acceptable for a personal system.",
+    question: "How do you decide whether availability needs redundancy?",
+  },
+  {
+    id: "A.8.15",
+    title: "Logging",
+    area: "Annex A, Technological",
+    asks: "Produce, protect and review logs that record activities, exceptions and faults.",
+    stack:
+      "Services log through one logger, jobs write run records, and the MCP server logs each request. The message services log counts, not message text.",
+    question: "What should never go into a log?",
+  },
+  {
+    id: "A.8.16",
+    title: "Monitoring activities",
+    area: "Annex A, Technological",
+    asks: "Watch networks, systems and applications for unusual behaviour and respond.",
+    stack:
+      "A watchdog checks job heartbeats every five minutes, and an outside dead-man's switch tells me if the whole box goes quiet.",
+    question:
+      "What is the value of a monitor that sits outside the thing it watches?",
+  },
+  {
+    id: "A.8.17",
+    title: "Clock synchronization",
+    area: "Annex A, Technological",
+    asks: "Keep the clocks of systems in step with an agreed time source so logs and records line up.",
+    stack:
+      "My schedules and the alert ages depend on the box's clock. I checked it by hand once, and I do not monitor drift.",
+    question:
+      "Why does an incident investigation fall apart if clocks disagree?",
+  },
 ];
