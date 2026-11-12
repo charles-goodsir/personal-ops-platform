@@ -74,3 +74,8 @@ test("the real content has unique ids and every field filled in", () => {
     for (const v of Object.values(e))
       expect(v.trim().length).toBeGreaterThan(0);
 });
+
+test("every real entry fits in one message", () => {
+  for (const e of ISO_ENTRIES)
+    expect(formatEntry(e).length, e.id).toBeLessThan(1500);
+});
