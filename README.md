@@ -2,7 +2,7 @@
 
 A self-hosted personal platform on my home mini PC. It has a shared Postgres + pgvector data layer and an MCP server, so Claude can search my notes and query my finances, a Telegram bot that sends me a daily briefing and a weekly spending summary and answers a few commands, a payday plan with savings goals and spending alerts, and a read-only dashboard.
 
-Status: complete and running on my mini PC: foundation, knowledge base, finance agent, daily briefing, command bot, status alerts with an outside check, a daily diary message, a read-only dashboard, and a payday plan with savings goals and spending alerts. See [docs/brief.md](docs/brief.md) for the full plan and the [risk assessment](RISK_ASSESSMENT.md) for what could go wrong and what I accepted.
+Status: complete and running on my mini PC: foundation, knowledge base, finance agent, daily briefing, command bot, status alerts with an outside check, a daily diary message, a daily ISO 27001 entry, a read-only dashboard, and a payday plan with savings goals and spending alerts. See [docs/brief.md](docs/brief.md) for the full plan and the [risk assessment](RISK_ASSESSMENT.md) for what could go wrong and what I accepted.
 
 ## Why I built it
 
@@ -23,6 +23,7 @@ flowchart LR
     brief["briefing"]
     sum["summary"]
     diary["diary"]
+    iso["iso"]
     backup["backup (nightly pg_dump)"]
     bot["bot (commands, watchdog)"]
     dash["dashboard (127.0.0.1 only)"]
@@ -48,6 +49,7 @@ flowchart LR
   brief --> tg
   sum --> tg
   diary --> tg
+  iso --> tg
   gh["GitHub (my public portfolio repo)"] -- "reads diary entries" --> diary
   bot -- "ping every 5 min, no data" --> hc["Healthchecks.io"]
 ```
@@ -64,6 +66,7 @@ Each module exposes functions from its own package. The MCP server, the briefing
 - I set a spending target for each fortnight from Telegram. When this fortnight's spending, not counting rent and bills, passes 80% of it and again at 100%, one message arrives after the 08:00 sync. Each level is sent once per fortnight.
 - Every morning at 08:30 NZ time a briefing arrives on Telegram: yesterday's spending and any unusual charge, this fortnight's spending against the target (with any charges still pending shown beside it), when the bank data was last pulled, notes that changed in the last day, and today's weather. A section that fails is skipped and shown as unavailable, and the rest still send.
 - Every morning at 09:00 NZ time a second message lists the previous day's diary entries (title and bullets), and nothing arrives on a day with no entry.
+- Every morning at 09:30 NZ time a third message sends one ISO 27001 clause or Annex A control, in my own words, with where it shows up in my own stack and a question to think about. There are 118 in a fixed order, starting at clause 4.1 on the day I set, and they repeat.
 - The morning after each payday (every 14 days from a date I set) a message at about 08:00 NZ time suggests how to split my pay: rent and bills stay fixed, and whatever I spent under my spending target is added to savings and investments in their usual ratio. The savings part is shared between my goals by weight. It only suggests, because Akahu is read-only, and it sends once per payday even across a restart. See [the payday plan](#the-payday-plan).
 - Every Monday at 08:00 NZ time a summary of the week's spending arrives on Telegram as a separate message.
 - A read-only dashboard shows this fortnight against my spending target, my savings goals, spending by category, the last six months, subscriptions and job health. It listens on `127.0.0.1` only, so I open it through an SSH tunnel and a password. See [the dashboard](#the-dashboard).
@@ -120,6 +123,7 @@ The commands use no model. Only `/payday set` and the `/goal` commands change an
 | `bot`            | Polls Telegram for my commands and answers them, and runs the watchdog. Outbound only                                                                                                                                                                                                                            |
 | `briefing`       | Sends the daily briefing to Telegram at `BRIEFING_TIME` (default 08:30 NZ time)                                                                                                                                                                                                                                  |
 | `diary`          | Sends yesterday's diary entries to Telegram at `DIARY_TIME` (default 09:00 NZ time)                                                                                                                                                                                                                              |
+| `iso`            | Sends one ISO 27001 clause or control to Telegram at `ISO_TIME` (default 09:30 NZ time), from `ISO_START` on. No input and no outbound call except Telegram                                                                                                                                                      |
 | `dashboard`      | The read-only web page. Published on 127.0.0.1 only, reached through an SSH tunnel. Connects as a role that can only `SELECT`                                                                                                                                                                                    |
 | `summary`        | Sends the weekly spending summary to Telegram, Monday 08:00 NZ time                                                                                                                                                                                                                                              |
 | `mcp-server`     | The MCP server. Published on the address set by `MCP_PUBLISH_ADDR`                                                                                                                                                                                                                                               |
@@ -160,6 +164,7 @@ Short records of the choices that shaped the project, with what I rejected and w
 12. [A payday plan and savings goals](docs/adr/0012-payday-plan-and-savings-goals.md)
 13. [Pending charges beside the settled spending](docs/adr/0013-pending-charges.md)
 14. [Signed images and a pull-based deploy](docs/adr/0014-signed-images-and-a-pull-based-deploy.md)
+15. [One ISO 27001 clause or control a day, as its own message](docs/adr/0015-iso-27001-daily-entry.md)
 
 ## Setup
 
@@ -170,13 +175,14 @@ Short records of the choices that shaped the project, with what I rejected and w
 5. For finance, add the Akahu app and user tokens (my.akahu.nz, personal app). Add an `ANTHROPIC_API_KEY` to categorise with the model. Without one, sync and rules still work and new transactions stay uncategorised.
 6. For the Telegram summary, create a bot with @BotFather, send it a message, and read your chat id from the bot's `getUpdates`. Set `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`. `CLAUDE_SUMMARY_MODEL` defaults to `claude-sonnet-5-5`. The daily briefing and the command bot use the same bot and chat. Only the weekly summary uses a model. Set `WEATHER_LAT` and `WEATHER_LON` (suburb level is enough), and optionally `BRIEFING_TIME` (24-hour NZ time, default 08:30), `DIARY_TIME` (default 09:00) and `FINANCE_SYNC_TIME` (default 08:00). Optionally create a check at healthchecks.io with a 5 minute period and 10 minute grace, add your email as its alert channel, and set `HEALTHCHECK_PING_URL` to its ping URL.
 7. For the dashboard, set `DASHBOARD_PASSWORD` (at least 20 characters, `openssl rand -hex 24`). Compose refuses to start any service until it is set. Optionally set `DASHBOARD_HIDE_PAYEES=true` to hide payee names for screenshots, and `FINANCE_NIGHT_SYNC_TIME` (default `00:05`, empty turns it off).
+   For the ISO 27001 message, set `ISO_START` to the date (YYYY-MM-DD, NZ) the first entry should arrive. Compose refuses to start without it. `ISO_TIME` defaults to 09:30.
 8. On the mini PC, set `MCP_PUBLISH_ADDR` and `MCP_ALLOWED_HOSTS` to its LAN IP, and allow the port through the firewall.
 9. `docker compose up -d --build`. The first run downloads the model (about 274 MB), indexes every note and syncs transactions from `FINANCE_HISTORY_START`.
 10. Add the server to Claude Code: `claude mcp add --scope user --transport http personal-ops-lan http://<host>:3000/mcp --header "Authorization: Bearer <token>"`
 
 For development: `corepack pnpm install`, then `corepack pnpm test`. Integration tests run against Postgres when `DATABASE_URL` is set, in a throwaway schema built from the real migrations.
 
-To send a summary, briefing or diary message now, run `docker compose exec summary node packages/finance/dist/summary-main.js --once`, `docker compose exec briefing node packages/briefing/dist/briefing-main.js --once` or `docker compose exec diary node packages/briefing/dist/diary-main.js --once` (add `--day=2026-10-12` to choose the day).
+To send a summary, briefing, diary or ISO 27001 message now, run `docker compose exec summary node packages/finance/dist/summary-main.js --once`, `docker compose exec briefing node packages/briefing/dist/briefing-main.js --once` or `docker compose exec diary node packages/briefing/dist/diary-main.js --once` (add `--day=2026-10-12` to choose the day) or `docker compose exec iso node packages/briefing/dist/iso-main.js --once` (it sends today's entry, and nothing before `ISO_START`).
 
 ## Deploys
 
