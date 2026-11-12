@@ -16,6 +16,7 @@ const LABELS: Record<Job, string> = {
   briefing: "Daily briefing",
   summary: "Weekly summary",
   diary: "Diary message",
+  iso: "ISO 27001 message",
   backup: "Backup",
   "image-update": "Image update",
 };

@@ -8,6 +8,7 @@ export const JOBS = [
   "briefing",
   "summary",
   "diary",
+  "iso",
   "backup",
   "image-update",
 ] as const;
@@ -92,6 +93,7 @@ export const MAX_QUIET_MS: Record<Job, number> = {
   briefing: 26 * HOUR,
   summary: 8 * 24 * HOUR,
   diary: 26 * HOUR,
+  iso: 26 * HOUR,
   backup: 26 * HOUR,
   // The nightly check for a new signed image. It records a success when it
   // finds nothing new too, so a quiet day is not a stale one.
