@@ -955,4 +955,168 @@ export const ISO_ENTRIES: IsoEntry[] = [
     question:
       "Why does an incident investigation fall apart if clocks disagree?",
   },
+  {
+    id: "A.8.18",
+    title: "Use of privileged utility programs",
+    area: "Annex A, Technological",
+    asks: "Restrict and tightly control utility programs that can override normal system and application controls.",
+    stack:
+      "Tools like docker, sudo and psql on the box can bypass my app-level checks, and I do not restrict them beyond my own account.",
+    question:
+      "Why can a database client be more dangerous than the application in front of it?",
+  },
+  {
+    id: "A.8.19",
+    title: "Installation of software on operational systems",
+    area: "Annex A, Technological",
+    asks: "Control how software gets installed on production systems.",
+    stack:
+      "The updater only installs an image whose signature checks out, and I stripped npm and corepack from the image. Packages on the host itself are installed by hand.",
+    question:
+      "What is the risk of letting anyone install software on a production server?",
+  },
+  {
+    id: "A.8.20",
+    title: "Networks security",
+    area: "Annex A, Technological",
+    asks: "Secure, manage and control networks and network devices to protect information in systems and applications.",
+    stack:
+      "The host firewall drops everything to containers except ports I list. No port is meant to be reachable from the internet, though I still have to check the new router for forwards.",
+    question: "What does default-deny mean, and where does it apply?",
+  },
+  {
+    id: "A.8.21",
+    title: "Security of network services",
+    area: "Annex A, Technological",
+    asks: "Identify and agree the security features, service levels and requirements of network services you use or provide.",
+    stack:
+      "The MCP server needs a token and checks the Host header against an allowlist to stop DNS rebinding. Outbound calls are limited to a few suppliers.",
+    question: "What attack does a Host header check defend against?",
+  },
+  {
+    id: "A.8.22",
+    title: "Segregation of networks",
+    area: "Annex A, Technological",
+    asks: "Split groups of services, users and systems into separate network zones.",
+    stack:
+      "My home network is flat as far as I have set it up. The containers share a compose network, and the firewall is my main separation.",
+    question: "What would you put in its own zone on a small office network?",
+  },
+  {
+    id: "A.8.23",
+    title: "Web filtering",
+    area: "Annex A, Technological",
+    asks: "Control which external sites systems and users can reach, to limit exposure to malicious content.",
+    stack:
+      "I have not set an outbound allowlist, so the box could call any host if something inside it went wrong.",
+    question:
+      "How would an egress allowlist have limited a supply chain compromise?",
+  },
+  {
+    id: "A.8.24",
+    title: "Use of cryptography",
+    area: "Annex A, Technological",
+    asks: "Define and apply rules for using cryptography, including how keys are managed through their life.",
+    stack:
+      "Signed images (keyless), and TLS to outside services. The MCP server uses plain HTTP on the LAN, with TLS or Tailscale on my ideas list, and the disk is not encrypted.",
+    question:
+      "What is the weakest part of most cryptographic systems in practice?",
+  },
+  {
+    id: "A.8.25",
+    title: "Secure development life cycle",
+    area: "Annex A, Technological",
+    asks: "Set and apply rules for developing software and systems securely.",
+    stack:
+      "Each phase gets a threat model section, tests, an attack batch, a pull request and CI checks before it ships.",
+    question:
+      "At which stages of development would you put security activities?",
+  },
+  {
+    id: "A.8.26",
+    title: "Application security requirements",
+    area: "Annex A, Technological",
+    asks: "Identify, specify and approve the security requirements for each application.",
+    stack:
+      "The threat model lists what each feature must resist, such as strict inputs for the bot and a strict content policy for the dashboard.",
+    question:
+      "How do you turn a vague security wish into a testable requirement?",
+  },
+  {
+    id: "A.8.27",
+    title: "Secure system architecture and engineering principles",
+    area: "Annex A, Technological",
+    asks: "Set and apply secure engineering principles to how systems are designed, built and changed.",
+    stack:
+      "Least privilege (a SELECT-only role), non-root containers, a read-only filesystem, and no model in the bot's command path.",
+    question: "Name three secure design principles and one example of each.",
+  },
+  {
+    id: "A.8.28",
+    title: "Secure coding",
+    area: "Annex A, Technological",
+    asks: "Apply secure coding principles in software development.",
+    stack:
+      "Strict input parsing, parameterised queries and a strict CSP on the dashboard, tested with injection attempts.",
+    question:
+      "What is the difference between validating input and escaping output?",
+  },
+  {
+    id: "A.8.29",
+    title: "Security testing in development and acceptance",
+    area: "Annex A, Technological",
+    asks: "Define and run security tests as part of development and before acceptance.",
+    stack:
+      "My attack batches (A to F) test my own controls by breaking them, which turned up real findings and fixes.",
+    question: "Why test a control by breaking it on purpose?",
+  },
+  {
+    id: "A.8.30",
+    title: "Outsourced development",
+    area: "Annex A, Technological",
+    asks: "Direct, monitor and review any development done by someone outside your organization.",
+    stack:
+      "An AI assistant writes much of the code and I review it in pull requests. CI and my own review are the oversight.",
+    question:
+      "What would you check in code written by a third party before accepting it?",
+  },
+  {
+    id: "A.8.31",
+    title: "Separation of development, test and production environments",
+    area: "Annex A, Technological",
+    asks: "Keep development, testing and production apart and secured.",
+    stack:
+      "Dev runs on my Mac, tests use a throwaway database, and production is the box. Deploys reach it only through signed images.",
+    question:
+      "Why should developers not have routine write access to production?",
+  },
+  {
+    id: "A.8.32",
+    title: "Change management",
+    area: "Annex A, Technological",
+    asks: "Make changes to systems and facilities through a controlled process.",
+    stack:
+      "Every change goes through a pull request and checks, ships as a signed image, and can be rolled back. Database changes are not rolled back.",
+    question:
+      "What is the difference between a standard change and an emergency change?",
+  },
+  {
+    id: "A.8.33",
+    title: "Test information",
+    area: "Annex A, Technological",
+    asks: "Select, protect and manage the data you use for testing.",
+    stack:
+      "My tests insert made-up rows into a throwaway database, so real bank data stays out of the test process.",
+    question: "Why is copying production data into a test system risky?",
+  },
+  {
+    id: "A.8.34",
+    title: "Protection of information systems during audit testing",
+    area: "Annex A, Technological",
+    asks: "Plan and agree audit tests that touch live systems so they do not disrupt operations or expose data.",
+    stack:
+      "My live retests after a deploy were read-only checks. The destructive attacks run against local copies.",
+    question:
+      "What would you agree with the owner before running a scan against production?",
+  },
 ];
