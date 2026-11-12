@@ -159,6 +159,18 @@ The budget commands and alerts (D8, D9) were removed in phase 12 ([ADR 12](adr/0
 | F8  | D      | The Telegram message about an update is lost to a connection reset        | The send is retried up to 4 times                                                                                                                                | **Finding, fixed:** the first real update logged `Connection reset by peer` and sent nothing. The retry was added after it                                           |
 | F9  | E      | The updater's user can control the host                                   | It makes only outbound calls and holds no deploy credentials                                                                                                     | **Accepted:** the user is in the docker group, which is root-equivalent                                                                                              |
 
+### G. The ISO 27001 daily message ([ADR 15](adr/0015-iso-27001-daily-entry.md))
+
+The service takes no input and makes no call except to Telegram, so there is no attack batch for it. The rows are what could still go wrong.
+
+| ID  | STRIDE | Threat                                                     | What stops it today                                                                                                                      | Result                                                                             |
+| --- | ------ | ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| G1  | T      | Someone changes the entries through a pull request         | The text is code in my repo, so a protected `main`, pull requests and required checks cover it. It is sent as plain text                 | **Accepted:** the same trust as the rest of the code                               |
+| G2  | I      | The entries describe my own gaps, and the repo is public   | The gaps are already in the risk assessment and README. The entries name no address, token or account                                    | **Accepted:** same as R18                                                          |
+| G3  | D, R   | The service is misconfigured or stops, and I do not notice | `ISO_START` is required, a failed send throws, and a heartbeat (26 hours) is watched by the watchdog                                     | Tested: a failed send throws, and a missing or bad start date stops the service    |
+| G4  | T      | An entry says something wrong about the standard           | Written in my own words from memory. I check it against the standard before I rely on it                                                 | **Open:** not yet checked against the standard                                     |
+| G5  | E      | The new service widens what a compromise could reach       | Read-only filesystem, all capabilities dropped, `no-new-privileges`, 256 MB limit, no published port, no volumes. It holds the bot token | Checked in the Compose file. It holds the same bot token as the diary service (R5) |
+
 ## Threats I am not testing in this phase
 
 - **The host and the network:** SSH, the firewall, disk encryption and the router are covered by the earlier hardening and risks R7, R15 and R17.
@@ -182,11 +194,12 @@ The budget commands and alerts (D8, D9) were removed in phase 12 ([ADR 12](adr/0
 
 ## Review
 
-| Date        | Reviewer | Result                                                                                                                                              |
-| ----------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 12 Oct 2026 | Me       | Approved by merging the draft. A8 and A9 decided in [ADR 10](adr/0010-threat-model-decisions.md)                                                    |
-| 13 Oct 2026 | Me       | Section D added for the budgets and dashboard phase, see [ADR 11](adr/0011-budgets-and-dashboard.md)                                                |
-| 14 Oct 2026 | Me       | Section E added for the payday plan and savings goals, see [ADR 12](adr/0012-payday-plan-and-savings-goals.md)                                      |
-| 15 Oct 2026 | Me       | Section E tested (batch E), D8 and D9 marked removed with the budgets. No bypass found                                                              |
-| 16 Oct 2026 | Me       | E8 to E12 added for the pending charges, see [ADR 13](adr/0013-pending-charges.md), and tested. No bypass found                                     |
-| 22 Oct 2026 | Me       | Section F added for the supply chain and the deploy, see [ADR 14](adr/0014-signed-images-and-a-pull-based-deploy.md), and tested. One finding fixed |
+| Date        | Reviewer | Result                                                                                                                                                      |
+| ----------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 12 Oct 2026 | Me       | Approved by merging the draft. A8 and A9 decided in [ADR 10](adr/0010-threat-model-decisions.md)                                                            |
+| 13 Oct 2026 | Me       | Section D added for the budgets and dashboard phase, see [ADR 11](adr/0011-budgets-and-dashboard.md)                                                        |
+| 14 Oct 2026 | Me       | Section E added for the payday plan and savings goals, see [ADR 12](adr/0012-payday-plan-and-savings-goals.md)                                              |
+| 15 Oct 2026 | Me       | Section E tested (batch E), D8 and D9 marked removed with the budgets. No bypass found                                                                      |
+| 16 Oct 2026 | Me       | E8 to E12 added for the pending charges, see [ADR 13](adr/0013-pending-charges.md), and tested. No bypass found                                             |
+| 22 Oct 2026 | Me       | Section F added for the supply chain and the deploy, see [ADR 14](adr/0014-signed-images-and-a-pull-based-deploy.md), and tested. One finding fixed         |
+| 12 Nov 2026 | Me       | Section G added for the ISO 27001 daily message, see [ADR 15](adr/0015-iso-27001-daily-entry.md). G4 is open until I check the entries against the standard |
