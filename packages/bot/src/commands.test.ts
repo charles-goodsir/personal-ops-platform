@@ -188,6 +188,7 @@ test("/status shows each job: ok, failing, late, or not yet run", async () => {
       "briefing: failing (2 in a row), last ok 20h ago",
       "summary: no run recorded yet",
       "diary: no run recorded yet",
+      "iso: no run recorded yet",
       "backup: LATE, last ok 3d ago",
       "image-update: no run recorded yet",
     ].join("\n"),

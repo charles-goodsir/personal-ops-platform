@@ -178,6 +178,28 @@ services:
       migrate:
         condition: service_completed_successfully
 
+  # Sends one ISO 27001 clause or control a day to Telegram at ISO_TIME (NZ), as
+  # its own message, from ISO_START on. No outbound calls except Telegram.
+  iso:
+    image: personal-ops:local
+    pull_policy: never
+    command: ["node", "packages/briefing/dist/iso-main.js"]
+    restart: unless-stopped
+    environment:
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?set in .env}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:?set in .env}
+      ISO_TIME: ${ISO_TIME:-09:30}
+      ISO_START: ${ISO_START:?set in .env}
+    read_only: true
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    mem_limit: 256m
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
   # Answers my Telegram commands (/spend, /subs, /notes, /briefing). Polls
   # Telegram, so it only makes outbound calls and publishes no port. Messages
   # from any chat but mine are ignored.
