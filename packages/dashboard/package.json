@@ -16,6 +16,6 @@
   "dependencies": {
     "@ops/core": "workspace:*",
     "@ops/finance": "workspace:*",
-    "zod": "4.6.6"
+    "zod": "4.6.7"
   }
 }
