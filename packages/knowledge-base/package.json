@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@ops/core": "workspace:*",
-    "unpdf": "1.8.1",
+    "unpdf": "2.1.0",
     "zod": "4.6.7"
   }
 }
