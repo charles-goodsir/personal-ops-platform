@@ -1,5 +1,5 @@
 # One image for every service: mcp-server now, other packages later.
-FROM node:24-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20 AS base
+FROM node:24-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54 AS base
 WORKDIR /app
 RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
@@ -20,7 +20,7 @@ RUN pnpm build
 FROM base AS prod-deps
 RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 
-FROM node:24-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20
+FROM node:24-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54
 # Nothing here runs npm, npx or corepack, and the copies in the base image carry
 # advisories of their own. A package that has a fix in Debian but not yet in the
 # base image is upgraded here, so the build is not exactly the base image's.
